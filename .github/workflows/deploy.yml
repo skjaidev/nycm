@@ -25,7 +25,16 @@ jobs:
       - name: Inject commit SHA
         env:
           COMMIT_SHA: ${{ github.sha }}
-        run: sed -i "s/__COMMIT__/${COMMIT_SHA:0:7}/g" index.html
+        run: |
+          python3 - <<'EOF'
+          import os, pathlib
+          sha = os.environ["COMMIT_SHA"][:7]
+          p = pathlib.Path("index.html")
+          txt = p.read_text()
+          assert "__COMMIT__" in txt, "placeholder not found in index.html"
+          p.write_text(txt.replace("__COMMIT__", sha))
+          print(f"injected {sha}")
+          EOF
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
