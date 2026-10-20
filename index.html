@@ -501,9 +501,9 @@ function vdotHtml(bucket) {
   const hi = Math.ceil(Math.max(...allVals)) + 2;
   const range = hi - lo;
 
-  const W = 400, PAD_L = 100, PAD_R = 12, PAD_T = 8, PAD_B = 20;
+  const W = 400, PAD_L = 100, PAD_R = 12, PAD_T = 18, PAD_B = 20;
   const plotW = W - PAD_L - PAD_R;
-  const rowH = 12, rowGap = 22;
+  const rowH = 12, rowGap = 14;
   const totalH = PAD_T + rows.length * (rowH + rowGap) - rowGap + 4 + PAD_B;
   const px = v => PAD_L + (v - lo) / range * plotW;
 
@@ -526,10 +526,8 @@ function vdotHtml(bucket) {
     if (r.p25 != null && r.p75 != null) {
       svg += `<rect x="${px(r.p25)}" y="${bY}" width="${px(r.p75) - px(r.p25)}" height="${bH}" fill="${r.color}28" stroke="${r.color}99" stroke-width="1" rx="2"/>`;
       svg += `<line x1="${px(r.p50)}" y1="${bY}" x2="${px(r.p50)}" y2="${bY + bH}" stroke="${r.color}" stroke-width="2.5"/>`;
-      const lblY = bY + bH + 11;
-      svg += `<text x="${px(r.p25)}" y="${lblY}" text-anchor="middle" font-size="8" fill="var(--muted)">P25: ${r.p25}</text>`;
-      svg += `<text x="${px(r.p50)}" y="${lblY}" text-anchor="middle" font-size="8" font-weight="600" fill="${r.color}">P50: ${r.p50}</text>`;
-      svg += `<text x="${px(r.p75)}" y="${lblY}" text-anchor="middle" font-size="8" fill="var(--muted)">P75: ${r.p75}</text>`;
+      const cx = (px(r.p25) + px(r.p75)) / 2;
+      svg += `<text x="${cx}" y="${bY - 4}" text-anchor="middle" font-size="8" fill="var(--muted)">P25: ${r.p25}  ·  <tspan font-weight="600" fill="${r.color}">P50: ${r.p50}</tspan>  ·  P75: ${r.p75}</text>`;
     }
   });
 
