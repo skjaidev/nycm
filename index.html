@@ -501,9 +501,9 @@ function vdotHtml(bucket) {
   const hi = Math.ceil(Math.max(...allVals)) + 2;
   const range = hi - lo;
 
-  const W = 400, PAD_L = 100, PAD_R = 12, PAD_T = 6, PAD_B = 20;
+  const W = 400, PAD_L = 100, PAD_R = 12, PAD_T = 8, PAD_B = 20;
   const plotW = W - PAD_L - PAD_R;
-  const rowH = 22, rowGap = 6;
+  const rowH = 12, rowGap = 8;
   const totalH = PAD_T + rows.length * rowH + (rows.length - 1) * rowGap + 4 + PAD_B;
   const px = v => PAD_L + (v - lo) / range * plotW;
 
@@ -524,16 +524,15 @@ function vdotHtml(bucket) {
     const bH = rowH;
     svg += `<text x="${PAD_L - 6}" y="${bY + bH / 2 + 3.5}" text-anchor="end" font-size="10" fill="var(--muted)">${r.label}</text>`;
     if (r.p25 != null && r.p75 != null) {
+      svg += `<g><title>P25: ${r.p25} · P50: ${r.p50} · P75: ${r.p75}</title>`;
       svg += `<rect x="${px(r.p25)}" y="${bY}" width="${px(r.p75) - px(r.p25)}" height="${bH}" fill="${r.color}28" stroke="${r.color}99" stroke-width="1" rx="2"/>`;
       svg += `<line x1="${px(r.p50)}" y1="${bY}" x2="${px(r.p50)}" y2="${bY + bH}" stroke="${r.color}" stroke-width="2.5"/>`;
-      svg += `<text x="${px(r.p25)}" y="${bY - 2}" text-anchor="middle" font-size="9" fill="var(--muted)">${r.p25}</text>`;
-      svg += `<text x="${px(r.p50)}" y="${bY - 2}" text-anchor="middle" font-size="9" font-weight="600" fill="${r.color}">${r.p50}</text>`;
-      svg += `<text x="${px(r.p75)}" y="${bY - 2}" text-anchor="middle" font-size="9" fill="var(--muted)">${r.p75}</text>`;
+      svg += `</g>`;
     }
   });
 
   svg += `</svg>`;
-  return `<div class="vdot-section"><div class="card-title" style="margin-bottom:6px">VDOT (Daniels) · higher = fitter · box = P25–P75 · line = P50</div>${svg}</div>`;
+  return `<div class="vdot-section"><div class="card-title" style="margin-bottom:6px">VDOT (Daniels) · higher = fitter · hover for values</div>${svg}</div>`;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
