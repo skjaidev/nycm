@@ -1,10 +1,9 @@
 <!doctype html>
 <meta charset="utf-8">
 <script>
-// SPA routing: redirect clean URLs back to index with path as query param
 var path = location.pathname;
 if (path !== '/') {
-  sessionStorage.setItem('spa_redirect', path);
+  try { sessionStorage.setItem('spa_redirect', location.pathname + location.search); } catch(e) {}
   location.replace('/' + location.search);
 }
 </script>

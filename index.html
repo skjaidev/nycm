@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYCM Indicators</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #f9fafb;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent2: #059669;
+  --warn: #d97706;
+  --danger: #dc2626;
+  --radius: 8px;
+  --card-pad: 20px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5; }
+a { color: var(--accent); }
+
+.page { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+.mode-toggle { display: flex; gap: 0; margin-bottom: 24px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); width: fit-content; }
+.mode-toggle button { background: transparent; border: none; color: var(--muted); padding: 8px 20px; font-size: 14px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.mode-toggle button.active { background: var(--accent); color: #fff; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+select { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 12px; font-size: 14px; cursor: pointer; min-width: 160px; }
+select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--card-pad); margin-bottom: 16px; }
+.card-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 12px; }
+.pct-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 12px; }
+.pct-item { text-align: center; }
+.pct-label { font-size: 11px; color: var(--muted); }
+.pct-val { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+.pct-val.p50 { color: var(--accent); }
+.pct-sub { font-size: 12px; color: var(--muted); }
+.riegel-line { font-size: 13px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 10px; margin-top: 6px; }
+.riegel-line span { color: var(--text); }
+.meta-line { font-size: 12px; color: var(--muted); }
+.no-data { color: var(--muted); font-size: 14px; padding: 24px 0; text-align: center; }
+
+.weak-warn { background: #fef9c3; border: 1px solid #fde047; border-radius: 6px; padding: 8px 12px; font-size: 13px; color: var(--warn); margin-bottom: 12px; }
+.small-sample { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 6px; padding: 8px 12px; font-size: 13px; color: var(--danger); margin-bottom: 12px; }
+
+.vdot-section { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
+.vdot-row { display: flex; gap: 32px; flex-wrap: wrap; }
+.vdot-group-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.vdot-nums { display: flex; gap: 16px; }
+.vdot-item { text-align: center; }
+.vdot-item .vl { font-size: 18px; font-weight: 600; color: var(--accent2); }
+.vdot-item .vk { font-size: 11px; color: var(--muted); }
+
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+@media (max-width: 600px) { .charts { grid-template-columns: 1fr; } }
+.chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.chart-title { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.reasoning { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--card-pad); font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 16px; }
+.reasoning strong { color: var(--text); }
+
+.race-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.race-tab { background: transparent; border: 1px solid var(--border); border-radius: 20px; color: var(--muted); padding: 4px 14px; font-size: 13px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.race-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.race-tab.weak { border-color: #fde047; }
+.race-tab.weak.active { background: var(--warn); border-color: var(--warn); color: #fff; }
+
+.loading { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; padding: 24px 0; }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.pending { opacity: 0.5; pointer-events: none; transition: opacity 0.1s; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>NYCM Indicators</h1>
+  <p class="subtitle">NYRR race data · Bronx 10M, SI Half, NYC Half, Brooklyn Half ↔ NYCM</p>
+
+  <div class="mode-toggle">
+    <button id="btn-indicator" class="active" onclick="setMode('indicator')">Indicator</button>
+    <button id="btn-target" onclick="setMode('target')">Target</button>
+  </div>
+
+  <!-- Indicator controls: given a race time, what NYCM do people run? -->
+  <div id="ctrl-indicator" class="controls">
+    <div class="field">
+      <label>Gender</label>
+      <select id="ind-gender" onchange="scheduleUpdate()">
+        <option value="M">Men</option>
+        <option value="F">Women</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Indicator race</label>
+      <select id="ind-race" onchange="onIndRaceChange()">
+        <option value="bronx_10m">Bronx 10M (~7 wks)</option>
+        <option value="si_half">SI Half (~3 wks)</option>
+        <option value="nyc_half">NYC Half (~8 mo) ⚠</option>
+        <option value="brooklyn_half">Brooklyn Half (~6 mo) ⚠</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Indicator time</label>
+      <select id="ind-time" onchange="scheduleUpdate()"></select>
+    </div>
+  </div>
+
+  <!-- Target controls: given a NYCM target, what did people run in indicator races? -->
+  <div id="ctrl-target" class="controls hidden">
+    <div class="field">
+      <label>Gender</label>
+      <select id="tgt-gender" onchange="scheduleUpdate()">
+        <option value="M">Men</option>
+        <option value="F">Women</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>NYCM target</label>
+      <select id="tgt-time" onchange="scheduleUpdate()"></select>
+    </div>
+  </div>
+
+  <!-- Indicator race tabs for target mode -->
+  <div id="tgt-race-tabs" class="race-tabs hidden">
+    <button class="race-tab active" data-race="bronx_10m" onclick="selectTgtRace('bronx_10m')">Bronx 10M</button>
+    <button class="race-tab" data-race="si_half" onclick="selectTgtRace('si_half')">SI Half</button>
+    <button class="race-tab weak" data-race="nyc_half" onclick="selectTgtRace('nyc_half')">NYC Half ⚠</button>
+    <button class="race-tab weak" data-race="brooklyn_half" onclick="selectTgtRace('brooklyn_half')">Brooklyn Half ⚠</button>
+  </div>
+
+  <div id="loading" class="loading hidden"><div class="spinner"></div>&nbsp;Loading…</div>
+  <div id="output"></div>
+</div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────
+const WEAK = new Set(["nyc_half", "brooklyn_half"]);
+const RACE_LABELS = {
+  bronx_10m:     "Bronx 10M",
+  si_half:       "SI Half",
+  nyc_half:      "NYC Half",
+  brooklyn_half: "Brooklyn Half",
+};
+const RACE_SLUG = {
+  bronx_10m: "bx10m", si_half: "sihalf",
+  nyc_half:  "nychalf", brooklyn_half: "bkhalf",
+};
+const SLUG_RACE = Object.fromEntries(Object.entries(RACE_SLUG).map(([k,v]) => [v,k]));
+const TIMING = {
+  bronx_10m:     "~7 weeks before NYCM (September)",
+  si_half:       "~3 weeks before NYCM (October)",
+  nyc_half:      "~8 months before NYCM (March)",
+  brooklyn_half: "~6 months before NYCM (May)",
+};
+const MARATHON_DIST = 26.2188;
+
+const FWD_CENTERS = [
+  "2:40:00","2:50:00","3:00:00","3:10:00","3:20:00","3:30:00",
+  "3:40:00","3:50:00","4:00:00","4:10:00","4:20:00","4:30:00",
+];
+
+// ── State ─────────────────────────────────────────────────────────────────
+let mode    = "indicator";
+let tgtRace = "bronx_10m";
+let histChart = null, scatterChart = null;
+let debounceTimer = null;
+const dataCache = {};
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function fmt(sec) {
+  if (!sec && sec !== 0) return "—";
+  sec = Math.round(sec);
+  const h = Math.floor(sec / 3600), r = sec % 3600;
+  const m = Math.floor(r / 60), s = r % 60;
+  if (h) return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  return `${m}:${String(s).padStart(2,"0")}`;
+}
+
+function fmtPace(sec, dist) {
+  if (!sec || !dist) return "—";
+  return fmt(sec / dist) + "/mi";
+}
+
+function toSec(t) {
+  if (!t) return 0;
+  const p = t.split(":").map(Number);
+  return p.length === 3 ? p[0]*3600+p[1]*60+p[2] : p[0]*60+p[1];
+}
+
+function findClosest(centers, sec) {
+  return centers.reduce((best, c) =>
+    Math.abs(toSec(c) - sec) < Math.abs(toSec(best) - sec) ? c : best
+  );
+}
+
+function b10mCenters() {
+  const out = [];
+  for (let s = 3750; s <= 5850; s += 300) out.push(fmt(s));
+  return out;
+}
+
+function halfCenters() {
+  const out = [];
+  for (let s = 4650; s <= 7350; s += 300) out.push(fmt(s));
+  return out;
+}
+
+function indCenters(race) {
+  return race === "bronx_10m" ? b10mCenters() : halfCenters();
+}
+
+function fileKey(dir, race, gender) {
+  return dir === "target" ? `forward_${gender}` : `reverse_${race}_${gender}`;
+}
+
+// ── Fetch ─────────────────────────────────────────────────────────────────
+async function fetchData(key) {
+  if (dataCache[key] !== undefined) return dataCache[key];
+  try {
+    const res = await fetch(`data/${key}.json`);
+    dataCache[key] = res.ok ? await res.json() : {};
+  } catch(e) {
+    dataCache[key] = {};
+  }
+  return dataCache[key];
+}
+
+// ── Dropdowns ─────────────────────────────────────────────────────────────
+function populateIndTime(race, selectVal) {
+  const sel  = document.getElementById("ind-time");
+  const prev = selectVal || sel.value;
+  sel.innerHTML = "";
+  indCenters(race).forEach(c => {
+    const o = document.createElement("option");
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  });
+  if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
+function populateTgtTime(selectVal) {
+  const sel = document.getElementById("tgt-time");
+  if (!sel.options.length) {
+    FWD_CENTERS.forEach(c => {
+      const o = document.createElement("option");
+      o.value = c; o.textContent = c;
+      sel.appendChild(o);
+    });
+  }
+  const target = selectVal || "3:30:00";
+  if ([...sel.options].some(o => o.value === target)) sel.value = target;
+}
+
+function onIndRaceChange() {
+  populateIndTime(document.getElementById("ind-race").value);
+  scheduleUpdate(true);
+}
+
+function selectTgtRace(race) {
+  tgtRace = race;
+  document.querySelectorAll(".race-tab").forEach(b =>
+    b.classList.toggle("active", b.dataset.race === race)
+  );
+  scheduleUpdate(true);
+}
+
+// ── Mode ──────────────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById("btn-indicator").classList.toggle("active", m === "indicator");
+  document.getElementById("btn-target").classList.toggle("active", m === "target");
+  document.getElementById("ctrl-indicator").classList.toggle("hidden", m !== "indicator");
+  document.getElementById("ctrl-target").classList.toggle("hidden", m !== "target");
+  document.getElementById("tgt-race-tabs").classList.toggle("hidden", m !== "target");
+  scheduleUpdate(true);
+}
+
+// ── Debounce ──────────────────────────────────────────────────────────────
+function scheduleUpdate(immediate) {
+  clearTimeout(debounceTimer);
+  if (immediate) { loadAndRender(); return; }
+  debounceTimer = setTimeout(loadAndRender, 1800);
+}
+
+// ── Permalink ─────────────────────────────────────────────────────────────
+function currentPath() {
+  if (mode === "indicator") {
+    const race   = document.getElementById("ind-race").value;
+    const time   = document.getElementById("ind-time").value;
+    const gender = document.getElementById("ind-gender").value;
+    return `/indicator/${RACE_SLUG[race]}/${toSec(time)}?gender=${gender}`;
+  } else {
+    const time   = document.getElementById("tgt-time").value;
+    const gender = document.getElementById("tgt-gender").value;
+    return `/target/nycm/${toSec(time)}?gender=${gender}`;
+  }
+}
+
+function applyPermalink(path, search) {
+  const parts  = path.replace(/^\//, "").split("/");
+  const gender = new URLSearchParams(search).get("gender") || "M";
+
+  if (parts[0] === "indicator" && parts[1] && parts[2]) {
+    const race = SLUG_RACE[parts[1]];
+    if (!race) return false;
+    const sec  = parseInt(parts[2], 10);
+    mode = "indicator";
+    document.getElementById("ind-race").value   = race;
+    document.getElementById("ind-gender").value = gender;
+    populateIndTime(race, findClosest(indCenters(race), sec));
+  } else if (parts[0] === "target" && parts[2]) {
+    const sec = parseInt(parts[2], 10);
+    mode = "target";
+    document.getElementById("tgt-gender").value = gender;
+    populateTgtTime(findClosest(FWD_CENTERS, sec));
+  } else {
+    return false;
+  }
+
+  document.getElementById("btn-indicator").classList.toggle("active", mode === "indicator");
+  document.getElementById("btn-target").classList.toggle("active", mode === "target");
+  document.getElementById("ctrl-indicator").classList.toggle("hidden", mode !== "indicator");
+  document.getElementById("ctrl-target").classList.toggle("hidden", mode !== "target");
+  document.getElementById("tgt-race-tabs").classList.toggle("hidden", mode !== "target");
+  return true;
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────
+const TICK  = "#9ca3af";
+const GRID  = "#f3f4f6";
+
+function destroyCharts() {
+  if (histChart)    { histChart.destroy();    histChart    = null; }
+  if (scatterChart) { scatterChart.destroy(); scatterChart = null; }
+}
+
+function renderHistogram(canvasId, bins, color) {
+  const ctx = document.getElementById(canvasId)?.getContext("2d");
+  if (!ctx || !bins?.length) return;
+  histChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: bins.map(b => fmt(b[0])),
+      datasets: [{ data: bins.map(b => b[2]), backgroundColor: color + "55", borderColor: color, borderWidth: 1 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: TICK, font: { size: 10 }, maxRotation: 45 }, grid: { color: GRID } },
+        y: { ticks: { color: TICK, font: { size: 11 } }, grid: { color: GRID } },
+      },
+    },
+  });
+}
+
+function renderScatter(canvasId, pairs, indLabel) {
+  const ctx = document.getElementById(canvasId)?.getContext("2d");
+  if (!ctx || !pairs?.length) return;
+  scatterChart = new Chart(ctx, {
+    type: "scatter",
+    data: { datasets: [{ data: pairs.map(([x,y]) => ({ x: x/60, y: y/60 })),
+                         backgroundColor: "#2563eb33", pointRadius: 3, pointHoverRadius: 5 }] },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: c => `${indLabel}: ${fmt(c.raw.x*60)} → NYCM: ${fmt(c.raw.y*60)}`
+      }}},
+      scales: {
+        x: { title: { display: true, text: indLabel, color: TICK },
+             ticks: { color: TICK, callback: v => fmt(v*60) }, grid: { color: GRID } },
+        y: { title: { display: true, text: "NYCM finish", color: TICK },
+             ticks: { color: TICK, callback: v => fmt(v*60) }, grid: { color: GRID } },
+      },
+    },
+  });
+}
+
+// ── VDOT ──────────────────────────────────────────────────────────────────
+function vdotHtml(bucket) {
+  const ev = bucket.vdot_ever_p50, yr = bucket.vdot_year_p50;
+  if (!ev && !yr) return "";
+  const group = (label, p25, p50, p75, n) =>
+    `<div class="vdot-group">
+      <div class="vdot-group-label">${label} (N=${n ?? "?"})</div>
+      <div class="vdot-nums">
+        <div class="vdot-item"><div class="vl">${p25 ?? "—"}</div><div class="vk">P25</div></div>
+        <div class="vdot-item"><div class="vl">${p50 ?? "—"}</div><div class="vk">P50</div></div>
+        <div class="vdot-item"><div class="vl">${p75 ?? "—"}</div><div class="vk">P75</div></div>
+      </div>
+    </div>`;
+  return `<div class="vdot-section">
+    <div class="card-title" style="margin-bottom:8px">VDOT (Jack Daniels)</div>
+    <div class="vdot-row">
+      ${ev ? group("Best in last 5 yrs", bucket.vdot_ever_p25, bucket.vdot_ever_p50, bucket.vdot_ever_p75, bucket.vdot_ever_n) : ""}
+      ${yr ? group("Best in marathon year", bucket.vdot_year_p25, bucket.vdot_year_p50, bucket.vdot_year_p75, bucket.vdot_year_n) : ""}
+    </div>
+  </div>`;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+async function loadAndRender() {
+  destroyCharts();
+  const loadEl = document.getElementById("loading");
+  const outEl  = document.getElementById("output");
+
+  loadEl.classList.remove("hidden");
+  outEl.classList.add("pending");
+
+  let data = {};
+  if (mode === "indicator") {
+    const race   = document.getElementById("ind-race").value;
+    const gender = document.getElementById("ind-gender").value;
+    data = await fetchData(fileKey("indicator", race, gender));
+  } else {
+    const gender = document.getElementById("tgt-gender").value;
+    data = await fetchData(fileKey("target", null, gender));
+  }
+
+  loadEl.classList.add("hidden");
+  outEl.classList.remove("pending");
+
+  try { history.replaceState(null, "", currentPath()); } catch(e) {}
+
+  if (mode === "indicator") renderIndicator(outEl, data);
+  else renderTarget(outEl, data);
+}
+
+function renderIndicator(outEl, data) {
+  const race   = document.getElementById("ind-race").value;
+  const time   = document.getElementById("ind-time").value;
+  const gender = document.getElementById("ind-gender").value;
+  const bucket = data[time];
+
+  if (!bucket) {
+    outEl.innerHTML = `<div class="no-data">No data for ${RACE_LABELS[race]} ${time} (${gender}).</div>`;
+    return;
+  }
+
+  const isWeak      = WEAK.has(race);
+  const smallSample = bucket.small_sample || bucket.n_nycm < 15;
+  const raceLabel   = RACE_LABELS[race];
+  const p25 = bucket.p25 || fmt(bucket.p25_sec);
+  const p50 = bucket.p50 || fmt(bucket.p50_sec);
+  const p75 = bucket.p75 || fmt(bucket.p75_sec);
+  const riegelPred = bucket.riegel_predicted || (bucket.riegel_predicted_sec ? fmt(bucket.riegel_predicted_sec) : null);
+  const medErr     = bucket.riegel_median_error_sec;
+
+  let html = "";
+  if (isWeak)      html += `<div class="weak-warn">⚠ Weak indicator — ${TIMING[race]}. Fitness likely changed. Treat as a wide estimate.</div>`;
+  if (smallSample) html += `<div class="small-sample">Small sample (N=${bucket.n_nycm}) — percentiles may not be stable.</div>`;
+
+  html += `<div class="card">
+    <div class="card-title">NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""} (${gender})</div>
+    <div class="pct-row">
+      <div class="pct-item">
+        <div class="pct-label">P25</div>
+        <div class="pct-val">${p25}</div>
+        <div class="pct-sub">${fmtPace(bucket.p25_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">75% were slower</div>
+      </div>
+      <div class="pct-item">
+        <div class="pct-label">P50</div>
+        <div class="pct-val p50">${p50}</div>
+        <div class="pct-sub">${fmtPace(bucket.p50_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">half were slower</div>
+      </div>
+      <div class="pct-item">
+        <div class="pct-label">P75</div>
+        <div class="pct-val">${p75}</div>
+        <div class="pct-sub">${fmtPace(bucket.p75_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">25% were slower</div>
+      </div>
+    </div>
+    ${riegelPred ? `<div class="riegel-line">Riegel prediction: <span>${riegelPred}</span>${medErr != null ? ` · cohort ran <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median)` : ""}</div>` : ""}
+    <div class="meta-line" style="margin-top:8px">N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${bucket.n_nycm} (${bucket.pct_nycm ?? "—"}%)</div>
+    ${vdotHtml(bucket)}
+  </div>`;
+
+  html += `<div class="charts">
+    <div class="chart-wrap"><div class="chart-title">NYCM finishes</div><canvas id="hist-canvas" height="180"></canvas></div>
+    <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="180"></canvas></div>
+  </div>`;
+
+  const absErr = medErr != null ? fmt(Math.abs(medErr)) : null;
+  html += `<div class="reasoning">
+    <strong>${bucket.n_indicator || "?"}</strong> runners finished ${raceLabel} between <strong>${bucket.lo}</strong> and <strong>${bucket.hi}</strong>.
+    Of those, <strong>${bucket.n_nycm}</strong> (${bucket.pct_nycm ?? "—"}%) also ran NYCM that same year.
+    Their median finish was <strong>${p50}</strong> (P25–P75: ${p25}–${p75}).
+    ${riegelPred && absErr ? `Riegel predicts <strong>${riegelPred}</strong> from ${time}; the cohort ran <strong>${absErr}</strong> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median).` : ""}
+    ${isWeak ? `<br><br>⚠ ${TIMING[race]} — treat as a wide-range estimate only.` : ""}
+    ${smallSample ? `<br><br>⚠ Small sample (N=${bucket.n_nycm}); percentiles may not be stable.` : ""}
+    <br><br><span style="font-size:12px">Pooled across years 2021, 2023, 2024, 2025. Same-year NYCM matches only.
+    Indicator times don't distinguish racing vs training effort — a runner logging an easy long run at this pace may be fitter than the time suggests, skewing percentiles faster.
+    NYCM outcomes reflect race-day execution, weather, and health; finish time may not reflect fitness.</span>
+  </div>`;
+
+  outEl.innerHTML = html;
+  if (bucket.histogram?.length) renderHistogram("hist-canvas", bucket.histogram, "#2563eb");
+  if (bucket.pairs?.length)     renderScatter("scatter-canvas", bucket.pairs, raceLabel);
+}
+
+function renderTarget(outEl, data) {
+  const time   = document.getElementById("tgt-time").value;
+  const gender = document.getElementById("tgt-gender").value;
+  const bucket = data[time];
+
+  if (!bucket) {
+    outEl.innerHTML = `<div class="no-data">No data for NYCM ${time} (${gender}).</div>`;
+    return;
+  }
+
+  const raceData  = (bucket.races || {})[tgtRace];
+  const isWeak    = WEAK.has(tgtRace);
+  const raceLabel = RACE_LABELS[tgtRace];
+
+  let html = "";
+  if (isWeak) html += `<div class="weak-warn">⚠ Weak indicator — ${TIMING[tgtRace]}.</div>`;
+
+  if (!raceData) {
+    html += `<div class="card"><div class="no-data">No ${raceLabel} data for NYCM ~${time} (${gender}).</div></div>`;
+    outEl.innerHTML = html;
+    return;
+  }
+
+  const smallSample = raceData.n_matched < 15;
+  if (smallSample) html += `<div class="small-sample">Small sample (N=${raceData.n_matched}).</div>`;
+
+  const p25    = raceData.p25 || fmt(raceData.p25_sec);
+  const p50    = raceData.p50 || fmt(raceData.p50_sec);
+  const p75    = raceData.p75 || fmt(raceData.p75_sec);
+  const medErr = raceData.riegel_median_error_sec;
+
+  html += `<div class="card">
+    <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min (${gender})</div>
+    <div class="pct-row">
+      <div class="pct-item">
+        <div class="pct-label">P25</div>
+        <div class="pct-val">${p25}</div>
+        <div class="pct-sub">75% were slower</div>
+      </div>
+      <div class="pct-item">
+        <div class="pct-label">P50</div>
+        <div class="pct-val p50">${p50}</div>
+        <div class="pct-sub">half were slower</div>
+      </div>
+      <div class="pct-item">
+        <div class="pct-label">P75</div>
+        <div class="pct-val">${p75}</div>
+        <div class="pct-sub">25% were slower</div>
+      </div>
+    </div>
+    ${medErr != null ? `<div class="riegel-line">Riegel median error: <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> (cohort ran ${medErr >= 0 ? "slower" : "faster"} than Riegel)</div>` : ""}
+    <div class="meta-line" style="margin-top:8px">N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${raceData.n_matched} (${raceData.pct_ran ?? "—"}%)</div>
+    ${vdotHtml(bucket)}
+  </div>`;
+
+  html += `<div class="charts">
+    <div class="chart-wrap"><div class="chart-title">${raceLabel} times for NYCM ~${time}</div><canvas id="hist-canvas" height="180"></canvas></div>
+    <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="180"></canvas></div>
+  </div>`;
+
+  html += `<div class="reasoning">
+    <strong>${bucket.n_cohort}</strong> runners finished NYCM within 5 minutes of <strong>${time}</strong>.
+    Of those, <strong>${raceData.n_matched}</strong> (${raceData.pct_ran ?? "—"}%) also ran ${raceLabel} that same year.
+    Their ${raceLabel} times: P25 <strong>${p25}</strong> · P50 <strong>${p50}</strong> · P75 <strong>${p75}</strong>.
+    ${medErr != null ? `Riegel median error: ${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}.` : ""}
+    ${isWeak ? `<br><br>⚠ ${TIMING[tgtRace]} — treat as a wide-range estimate.` : ""}
+    <br><br><span style="font-size:12px">Pooled across years 2021, 2023, 2024, 2025. Same-year matches only.
+    Indicator times don't distinguish racing vs training effort — skews indicator times faster for runners who raced hard.
+    NYCM outcomes reflect race-day execution, weather, and health; finish time may not reflect fitness.</span>
+  </div>`;
+
+  outEl.innerHTML = html;
+  if (raceData.histogram?.length) renderHistogram("hist-canvas", raceData.histogram, "#059669");
+  if (raceData.pairs?.length)     renderScatter("scatter-canvas", raceData.pairs, raceLabel);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+(function init() {
+  populateIndTime("bronx_10m");
+  populateTgtTime();
+
+  let path = location.pathname, search = location.search;
+  try {
+    const redir = sessionStorage.getItem("spa_redirect");
+    if (redir) {
+      sessionStorage.removeItem("spa_redirect");
+      const url = new URL(redir, location.origin);
+      path = url.pathname; search = url.search;
+    }
+  } catch(e) {}
+
+  if (path && path !== "/") applyPermalink(path, search);
+
+  scheduleUpdate(true);
+})();
+</script>
+</body>
+</html>
