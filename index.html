@@ -377,7 +377,12 @@ function selectTgtRace(race) {
 
 // ── Mode ──────────────────────────────────────────────────────────────────
 function setMode(m) {
+  const prevGender = mode === "indicator"
+    ? document.getElementById("ind-gender").value
+    : document.getElementById("tgt-gender").value;
   mode = m;
+  if (m === "indicator") document.getElementById("ind-gender").value = prevGender;
+  else                   document.getElementById("tgt-gender").value = prevGender;
   document.getElementById("btn-indicator").classList.toggle("active", m === "indicator");
   document.getElementById("btn-target").classList.toggle("active", m === "target");
   document.getElementById("ctrl-indicator").classList.toggle("hidden", m !== "indicator");
@@ -546,6 +551,15 @@ async function loadAndRender() {
   }
 
   if (gen !== renderGen) return;
+
+  // Retry once if data came back completely empty (transient fetch failure)
+  if (!Object.keys(data).length) {
+    setTimeout(() => { if (gen === renderGen) loadAndRender(); }, 800);
+    loadEl.classList.add("hidden");
+    outEl.classList.remove("pending");
+    outEl.innerHTML = "";
+    return;
+  }
 
   loadEl.classList.add("hidden");
   outEl.classList.remove("pending");
