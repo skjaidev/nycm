@@ -769,13 +769,6 @@ function renderTarget(outEl, data) {
   scheduleUpdate(true);
 })();
 </script>
-<footer id="site-footer" style="text-align:center;padding:24px 0 16px;font-size:11px;color:#9ca3af"></footer>
-<script>
-fetch("https://api.github.com/repos/skjaidev/nycm/git/ref/heads/main")
-  .then(r => r.json()).then(d => {
-    const sha = d.object?.sha?.slice(0, 7);
-    if (sha) document.getElementById("site-footer").textContent = sha;
-  }).catch(() => {});
-</script>
+<footer style="text-align:center;padding:24px 0 16px;font-size:11px;color:#9ca3af">__COMMIT__</footer>
 </body>
 </html>
