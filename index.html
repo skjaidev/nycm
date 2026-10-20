@@ -638,8 +638,9 @@ function renderIndicator(outEl, data) {
   </div>`;
 
   outEl.innerHTML = html;
-  if (bucket.histogram?.length) renderHistogram("hist-canvas", bucket.histogram, "#2563eb");
-  if (bucket.pairs?.length)     renderScatter("scatter-canvas", bucket.pairs, raceLabel);
+  const nycmTimes = (bucket.pairs || []).map(p => p[1]).sort((a,b) => a-b);
+  if (nycmTimes.length) renderHistogram("hist-canvas", buildHistogram(nycmTimes, 150), "#2563eb");
+  if (bucket.pairs?.length) renderScatter("scatter-canvas", bucket.pairs, raceLabel);
 }
 
 function renderTarget(outEl, data) {
@@ -714,8 +715,9 @@ function renderTarget(outEl, data) {
   </div>`;
 
   outEl.innerHTML = html;
-  if (raceData.histogram?.length) renderHistogram("hist-canvas", raceData.histogram, "#059669");
-  if (raceData.pairs?.length)     renderScatter("scatter-canvas", raceData.pairs, raceLabel);
+  const indTimes = (raceData.pairs || []).map(p => p[0]).sort((a,b) => a-b);
+  if (indTimes.length) renderHistogram("hist-canvas", buildHistogram(indTimes, 150), "#059669");
+  if (raceData.pairs?.length) renderScatter("scatter-canvas", raceData.pairs, raceLabel);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
