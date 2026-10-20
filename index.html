@@ -39,10 +39,10 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 .mode-toggle button { background: transparent; border: none; color: var(--muted); padding: 8px 20px; font-size: 14px; cursor: pointer; transition: background 0.15s, color 0.15s; }
 .mode-toggle button.active { background: var(--accent); color: #fff; }
 
-.controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; align-items: flex-end; }
-.field { display: flex; flex-direction: column; gap: 4px; }
-.field label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-select { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 12px; font-size: 14px; cursor: pointer; min-width: 160px; }
+.controls { display: flex; flex-wrap: nowrap; gap: 8px; margin-bottom: 20px; align-items: center; }
+.field { flex: 1; min-width: 0; }
+.field label { display: none; }
+select { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; font-size: 14px; cursor: pointer; width: 100%; min-width: 0; }
 select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--card-pad); margin-bottom: 16px; }
@@ -105,7 +105,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   <div id="ctrl-indicator" class="controls hidden">
     <div class="field">
       <label>Gender</label>
-      <select id="ind-gender" onchange="scheduleUpdate()">
+      <select id="ind-gender" aria-label="Gender" onchange="scheduleUpdate()">
         <option value="any">Any</option>
         <option value="M">Men</option>
         <option value="F">Women</option>
@@ -113,7 +113,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
     </div>
     <div class="field">
       <label>Indicator race</label>
-      <select id="ind-race" onchange="onIndRaceChange()">
+      <select id="ind-race" aria-label="Indicator race" onchange="onIndRaceChange()">
         <option value="bronx_10m">Bronx 10M (~7 wks)</option>
         <option value="si_half">SI Half (~3 wks)</option>
         <option value="nyc_half">NYC Half (~8 mo) ⚠</option>
@@ -122,7 +122,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
     </div>
     <div class="field">
       <label>Indicator time</label>
-      <select id="ind-time" onchange="scheduleUpdate()"></select>
+      <select id="ind-time" aria-label="Indicator time" onchange="scheduleUpdate()"></select>
     </div>
   </div>
 
@@ -130,7 +130,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   <div id="ctrl-target" class="controls">
     <div class="field">
       <label>Gender</label>
-      <select id="tgt-gender" onchange="scheduleUpdate()">
+      <select id="tgt-gender" aria-label="Gender" onchange="scheduleUpdate()">
         <option value="any">Any</option>
         <option value="M">Men</option>
         <option value="F">Women</option>
@@ -138,7 +138,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
     </div>
     <div class="field">
       <label>NYCM target</label>
-      <select id="tgt-time" onchange="scheduleUpdate()"></select>
+      <select id="tgt-time" aria-label="NYCM target time" onchange="scheduleUpdate()"></select>
     </div>
   </div>
 
