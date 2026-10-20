@@ -97,12 +97,12 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   <p class="subtitle">NYRR race data · Bronx 10M, SI Half, NYC Half, Brooklyn Half ↔ NYCM</p>
 
   <div class="mode-toggle">
-    <button id="btn-indicator" class="active" onclick="setMode('indicator')">Indicator</button>
-    <button id="btn-target" onclick="setMode('target')">Target</button>
+    <button id="btn-indicator" onclick="setMode('indicator')">Indicator</button>
+    <button id="btn-target" class="active" onclick="setMode('target')">Target</button>
   </div>
 
   <!-- Indicator controls: given a race time, what NYCM do people run? -->
-  <div id="ctrl-indicator" class="controls">
+  <div id="ctrl-indicator" class="controls hidden">
     <div class="field">
       <label>Gender</label>
       <select id="ind-gender" onchange="scheduleUpdate()">
@@ -127,7 +127,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   </div>
 
   <!-- Target controls: given a NYCM target, what did people run in indicator races? -->
-  <div id="ctrl-target" class="controls hidden">
+  <div id="ctrl-target" class="controls">
     <div class="field">
       <label>Gender</label>
       <select id="tgt-gender" onchange="scheduleUpdate()">
@@ -143,7 +143,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   </div>
 
   <!-- Indicator race tabs for target mode -->
-  <div id="tgt-race-tabs" class="race-tabs hidden">
+  <div id="tgt-race-tabs" class="race-tabs">
     <button class="race-tab active" data-race="bronx_10m" onclick="selectTgtRace('bronx_10m')">Bronx 10M</button>
     <button class="race-tab" data-race="si_half" onclick="selectTgtRace('si_half')">SI Half</button>
     <button class="race-tab weak" data-race="nyc_half" onclick="selectTgtRace('nyc_half')">NYC Half ⚠</button>
@@ -182,7 +182,7 @@ const FWD_CENTERS = [
 ];
 
 // ── State ─────────────────────────────────────────────────────────────────
-let mode    = "indicator";
+let mode    = "target";
 let tgtRace = "bronx_10m";
 let histChart = null, scatterChart = null;
 let debounceTimer = null;
