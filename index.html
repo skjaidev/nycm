@@ -61,7 +61,6 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .weak-warn { background: #fef9c3; border: 1px solid #fde047; border-radius: 6px; padding: 8px 12px; font-size: 13px; color: var(--warn); margin-bottom: 12px; }
 .small-sample { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 6px; padding: 8px 12px; font-size: 13px; color: var(--danger); margin-bottom: 12px; }
 
-.vdot-section { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
 .vdot-row { display: flex; gap: 32px; flex-wrap: wrap; }
 .vdot-group-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
 .vdot-nums { display: flex; gap: 16px; }
@@ -532,7 +531,7 @@ function vdotHtml(bucket) {
   });
 
   svg += `</svg>`;
-  return `<div class="vdot-section"><div class="card-title" style="margin-bottom:6px">VDOT (Daniels) · higher = fitter · hover for values</div>${svg}</div>`;
+  return `<div class="card"><div class="card-title">VDOT (Daniels) · higher = fitter · hover for values</div>${svg}</div>`;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
@@ -643,8 +642,8 @@ function renderIndicator(outEl, data) {
     </div>
     ${riegelPred ? `<div class="riegel-line">Riegel prediction: <span>${riegelPred}</span>${medErr != null ? ` · cohort ran <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median)` : ""}</div>` : ""}
     <div class="meta-line" style="margin-top:8px">N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${bucket.n_nycm} (${bucket.pct_nycm ?? "—"}%)</div>
-    ${vdotHtml(bucket)}
   </div>`;
+  html += vdotHtml(bucket);
 
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">NYCM finishes</div><canvas id="hist-canvas" height="180"></canvas></div>
@@ -722,8 +721,8 @@ function renderTarget(outEl, data) {
     </div>
     ${medErr != null ? `<div class="riegel-line">Riegel median error: <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> (cohort ran ${medErr >= 0 ? "slower" : "faster"} than Riegel)</div>` : ""}
     <div class="meta-line" style="margin-top:8px">N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${raceData.n_matched} (${raceData.pct_ran ?? "—"}%)</div>
-    ${vdotHtml(bucket)}
   </div>`;
+  html += vdotHtml(bucket);
 
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">${raceLabel} times for NYCM ~${time}</div><canvas id="hist-canvas" height="180"></canvas></div>
