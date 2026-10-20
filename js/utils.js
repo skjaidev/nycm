@@ -106,3 +106,8 @@ export function mergeTargetData(dataM, dataF) {
   }
   return merged;
 }
+
+// Expose as globals when running in a browser (loaded via <script src>)
+if (typeof window !== "undefined") {
+  Object.assign(window, { fmt, fmtPace, toSec, findClosest, buildHistogram, pct, mergeIndicatorData, mergeTargetData });
+}

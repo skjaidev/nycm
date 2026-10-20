@@ -154,8 +154,8 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   <div id="output"></div>
 </div>
 
-<script type="module">
-import { fmt, fmtPace, toSec, findClosest, buildHistogram, pct, mergeIndicatorData, mergeTargetData } from "/js/utils.js";
+<script src="/js/utils.js"></script>
+<script>
 // ── Constants ─────────────────────────────────────────────────────────────
 const WEAK = new Set(["nyc_half", "brooklyn_half"]);
 const RACE_LABELS = {
