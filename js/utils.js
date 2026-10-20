@@ -1,4 +1,4 @@
-export function fmt(sec) {
+function fmt(sec) {
   if (!sec && sec !== 0) return "—";
   sec = Math.round(sec);
   const h = Math.floor(sec / 3600), r = sec % 3600;
@@ -7,24 +7,24 @@ export function fmt(sec) {
   return `${m}:${String(s).padStart(2,"0")}`;
 }
 
-export function fmtPace(sec, dist) {
+function fmtPace(sec, dist) {
   if (!sec || !dist) return "—";
   return fmt(sec / dist) + "/mi";
 }
 
-export function toSec(t) {
+function toSec(t) {
   if (!t) return 0;
   const p = t.split(":").map(Number);
   return p.length === 3 ? p[0]*3600+p[1]*60+p[2] : p[0]*60+p[1];
 }
 
-export function findClosest(centers, sec) {
+function findClosest(centers, sec) {
   return centers.reduce((best, c) =>
     Math.abs(toSec(c) - sec) < Math.abs(toSec(best) - sec) ? c : best
   );
 }
 
-export function buildHistogram(sortedTimes, binWidth = 300) {
+function buildHistogram(sortedTimes, binWidth = 300) {
   if (!sortedTimes.length) return [];
   const lo0 = Math.floor(sortedTimes[0] / binWidth) * binWidth;
   const hi0 = (Math.floor(sortedTimes[sortedTimes.length - 1] / binWidth) + 1) * binWidth;
@@ -36,12 +36,12 @@ export function buildHistogram(sortedTimes, binWidth = 300) {
   return bins;
 }
 
-export function pct(sorted, p) {
+function pct(sorted, p) {
   if (!sorted.length) return null;
   return sorted[Math.floor(sorted.length * p)];
 }
 
-export function mergeIndicatorData(dataM, dataF) {
+function mergeIndicatorData(dataM, dataF) {
   const merged = {};
   const keys = new Set([...Object.keys(dataM), ...Object.keys(dataF)]);
   for (const key of keys) {
@@ -68,7 +68,7 @@ export function mergeIndicatorData(dataM, dataF) {
   return merged;
 }
 
-export function mergeTargetData(dataM, dataF) {
+function mergeTargetData(dataM, dataF) {
   const merged = {};
   const keys = new Set([...Object.keys(dataM), ...Object.keys(dataF)]);
   for (const key of keys) {
@@ -107,7 +107,4 @@ export function mergeTargetData(dataM, dataF) {
   return merged;
 }
 
-// Expose as globals when running in a browser (loaded via <script src>)
-if (typeof window !== "undefined") {
-  Object.assign(window, { fmt, fmtPace, toSec, findClosest, buildHistogram, pct, mergeIndicatorData, mergeTargetData });
-}
+export { fmt, fmtPace, toSec, findClosest, buildHistogram, pct, mergeIndicatorData, mergeTargetData };
