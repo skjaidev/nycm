@@ -515,7 +515,7 @@ function vdotHtml(bucket) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
-async function loadAndRender() {
+async function loadAndRender(isRetry = false) {
   const gen = ++renderGen;
   destroyCharts();
   const loadEl = document.getElementById("loading");
@@ -553,8 +553,8 @@ async function loadAndRender() {
   if (gen !== renderGen) return;
 
   // Retry once if data came back completely empty (transient fetch failure)
-  if (!Object.keys(data).length) {
-    setTimeout(() => { if (gen === renderGen) loadAndRender(); }, 800);
+  if (!Object.keys(data).length && !isRetry) {
+    setTimeout(() => { if (gen === renderGen) loadAndRender(true); }, 800);
     loadEl.classList.add("hidden");
     outEl.classList.remove("pending");
     outEl.innerHTML = "";
