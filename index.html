@@ -769,5 +769,11 @@ function renderTarget(outEl, data) {
   scheduleUpdate(true);
 })();
 </script>
+<footer style="text-align:center;padding:24px 0 16px;font-size:11px;color:#9ca3af" id="site-footer"></footer>
+<script>
+fetch('/version.json?t=' + Date.now())
+  .then(r => r.json()).then(d => { if (d.sha) document.getElementById('site-footer').textContent = d.sha; })
+  .catch(() => {});
+</script>
 </body>
 </html>

@@ -22,6 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Write version.json
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: echo "{\"sha\":\"${COMMIT_SHA:0:7}\"}" > version.json
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
