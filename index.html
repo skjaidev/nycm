@@ -240,9 +240,13 @@ async function fetchData(key) {
   if (dataCache[key] !== undefined) return dataCache[key];
   try {
     const res = await fetch(`data/${key}.json`);
-    dataCache[key] = res.ok ? await res.json() : {};
+    if (res.ok) {
+      dataCache[key] = await res.json();
+    } else {
+      return {};
+    }
   } catch(e) {
-    dataCache[key] = {};
+    return {};
   }
   return dataCache[key];
 }
