@@ -240,7 +240,7 @@ function fileKey(dir, race, gender) {
 async function fetchData(key) {
   if (dataCache[key] !== undefined) return dataCache[key];
   try {
-    const res = await fetch(`data/${key}.json`);
+    const res = await fetch(`/data/${key}.json`);
     if (res.ok) {
       dataCache[key] = await res.json();
     } else {
