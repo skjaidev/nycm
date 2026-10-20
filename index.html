@@ -389,7 +389,7 @@ function setMode(m) {
 function scheduleUpdate(immediate) {
   clearTimeout(debounceTimer);
   if (immediate) { loadAndRender(); return; }
-  debounceTimer = setTimeout(loadAndRender, 1800);
+  debounceTimer = setTimeout(loadAndRender, 400);
 }
 
 // ── Permalink ─────────────────────────────────────────────────────────────
