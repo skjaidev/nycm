@@ -496,6 +496,7 @@ function vdotHtml(bucket) {
   ].filter(r => r.p50 != null);
 
   const allVals = rows.flatMap(r => [r.p25, r.p75].filter(v => v != null));
+  if (allVals.length === 0) return "";
   const lo = Math.floor(Math.min(...allVals)) - 2;
   const hi = Math.ceil(Math.max(...allVals)) + 2;
   const range = hi - lo;
