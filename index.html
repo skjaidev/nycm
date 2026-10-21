@@ -467,20 +467,30 @@ function renderHistogram(canvasId, bins, color) {
 function renderScatter(canvasId, pairs, indLabel) {
   const ctx = document.getElementById(canvasId)?.getContext("2d");
   if (!ctx || !pairs?.length) return;
+  const xs = pairs.map(([x]) => x / 60);
+  const ys = pairs.map(([, y]) => y / 60);
+  const pad = (arr, pct) => {
+    const lo = Math.min(...arr), hi = Math.max(...arr), r = hi - lo;
+    return [lo - r * pct, hi + r * pct];
+  };
+  const [xMin, xMax] = pad(xs, 0.18);
+  const [yMin, yMax] = pad(ys, 0.18);
   scatterChart = new Chart(ctx, {
     type: "scatter",
-    data: { datasets: [{ data: pairs.map(([x,y]) => ({ x: x/60, y: y/60 })),
+    data: { datasets: [{ data: pairs.map(([x, y]) => ({ x: x / 60, y: y / 60 })),
                          backgroundColor: "#2563eb33", pointRadius: 3, pointHoverRadius: 5 }] },
     options: {
       responsive: true, maintainAspectRatio: true,
       plugins: { legend: { display: false }, tooltip: { callbacks: {
-        label: c => `${indLabel}: ${fmt(c.raw.x*60)} → NYCM: ${fmt(c.raw.y*60)}`
+        label: c => `${indLabel}: ${fmt(c.raw.x * 60)} → NYCM: ${fmt(c.raw.y * 60)}`
       }}},
       scales: {
-        x: { title: { display: true, text: indLabel, color: TICK },
-             ticks: { color: TICK, callback: v => fmt(v*60) }, grid: { color: GRID } },
-        y: { title: { display: true, text: "NYCM finish", color: TICK },
-             ticks: { color: TICK, callback: v => fmt(v*60) }, grid: { color: GRID } },
+        x: { min: xMin, max: xMax,
+             title: { display: true, text: indLabel, color: TICK },
+             ticks: { color: TICK, callback: v => fmt(v * 60) }, grid: { color: GRID } },
+        y: { min: yMin, max: yMax,
+             title: { display: true, text: "NYCM finish", color: TICK },
+             ticks: { color: TICK, callback: v => fmt(v * 60) }, grid: { color: GRID } },
       },
     },
   });
@@ -649,7 +659,7 @@ function renderIndicator(outEl, data) {
 
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">NYCM finishes</div><canvas id="hist-canvas" height="180"></canvas></div>
-    <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="180"></canvas></div>
+    <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="240"></canvas></div>
   </div>`;
 
   const absErr = medErr != null ? fmt(Math.abs(medErr)) : null;
@@ -728,7 +738,7 @@ function renderTarget(outEl, data) {
 
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">${raceLabel} times for NYCM ~${time}</div><canvas id="hist-canvas" height="180"></canvas></div>
-    <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="180"></canvas></div>
+    <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="240"></canvas></div>
   </div>`;
 
   html += `<div class="reasoning">
