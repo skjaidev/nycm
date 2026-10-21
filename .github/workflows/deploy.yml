@@ -22,10 +22,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Write version.json
+      - name: Inject commit SHA
         env:
           COMMIT_SHA: ${{ github.sha }}
-        run: echo "{\"sha\":\"${COMMIT_SHA:0:7}\"}" > version.json
+        run: python3 -c "
+import os,pathlib
+sha=os.environ['COMMIT_SHA'][:7]
+p=pathlib.Path('index.html')
+p.write_text(p.read_text().replace('__COMMIT__',sha))
+"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
