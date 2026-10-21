@@ -778,6 +778,21 @@ function renderTarget(outEl, data) {
   scheduleUpdate(true);
 })();
 </script>
-<footer style="text-align:center;padding:24px 0 16px;font-size:11px;color:#9ca3af">__COMMIT__</footer>
+<footer id="build-footer" style="text-align:center;padding:24px 0 16px;font-size:11px;color:#9ca3af"></footer>
+<script>
+fetch(location.origin + '/', {method:'HEAD', cache:'no-store'})
+  .then(r => {
+    const lm = r.headers.get('last-modified');
+    if (lm) {
+      const d = new Date(lm);
+      const s = d.getUTCFullYear() + '-'
+        + String(d.getUTCMonth()+1).padStart(2,'0') + '-'
+        + String(d.getUTCDate()).padStart(2,'0') + ' '
+        + String(d.getUTCHours()).padStart(2,'0') + ':'
+        + String(d.getUTCMinutes()).padStart(2,'0') + ' UTC';
+      document.getElementById('build-footer').textContent = 'deployed ' + s;
+    }
+  }).catch(() => {});
+</script>
 </body>
 </html>
