@@ -39,14 +39,15 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 .mode-toggle button { background: transparent; border: none; color: var(--muted); padding: 8px 20px; font-size: 14px; cursor: pointer; transition: background 0.15s, color 0.15s; }
 .mode-toggle button.active { background: var(--accent); color: #fff; }
 
-.controls { display: flex; flex-wrap: nowrap; gap: 8px; margin-bottom: 20px; align-items: center; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; align-items: center; }
+.controls .tab-desc { flex-basis: 100%; margin-bottom: 4px; }
 .field { flex: 1; min-width: 0; }
 .field label { display: none; }
 select { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; font-size: 14px; cursor: pointer; width: 100%; min-width: 0; }
 select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--card-pad); margin-bottom: 16px; }
-.card-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 12px; }
+.card-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 12px; display: flex; align-items: center; }
 .pct-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 12px; }
 .pct-item { text-align: center; }
 .pct-label { font-size: 11px; color: var(--muted); }
@@ -88,6 +89,14 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .pending { opacity: 0.5; pointer-events: none; transition: opacity 0.1s; }
 .hidden { display: none !important; }
+
+.tab-desc { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+
+.tip-icon { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: var(--border); color: var(--muted); font-size: 9px; font-weight: 700; font-style: normal; cursor: default; position: relative; margin-left: 6px; vertical-align: middle; user-select: none; flex-shrink: 0; }
+.tip-icon:hover { background: var(--accent); color: #fff; }
+.tip-icon .tip-bubble { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #1f2937; color: #f9fafb; font-size: 12px; line-height: 1.5; padding: 8px 10px; border-radius: 6px; width: 260px; white-space: normal; text-align: left; z-index: 100; pointer-events: none; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.tip-icon .tip-bubble::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #1f2937; }
+.tip-icon:hover .tip-bubble { display: block; }
 </style>
 </head>
 <body>
@@ -98,10 +107,12 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   <div class="mode-toggle">
     <button id="btn-indicator" onclick="setMode('indicator')">Indicator</button>
     <button id="btn-target" class="active" onclick="setMode('target')">Target</button>
+    <button id="btn-fitness" onclick="setMode('fitness')">Fitness</button>
   </div>
 
   <!-- Indicator controls: given a race time, what NYCM do people run? -->
   <div id="ctrl-indicator" class="controls hidden">
+    <p class="tab-desc">Enter a recent indicator race time to see how runners with that time have finished NYCM.</p>
     <div class="field">
       <label>Gender</label>
       <select id="ind-gender" aria-label="Gender" onchange="scheduleUpdate()">
@@ -127,6 +138,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   <!-- Target controls: given a NYCM target, what did people run in indicator races? -->
   <div id="ctrl-target" class="controls">
+    <p class="tab-desc">Enter a NYCM goal time to see what indicator race times runners in that finishing group have run.</p>
     <div class="field">
       <label>Gender</label>
       <select id="tgt-gender" aria-label="Gender" onchange="scheduleUpdate()">
@@ -138,6 +150,23 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
     <div class="field">
       <label>NYCM target</label>
       <select id="tgt-time" aria-label="NYCM target time" onchange="scheduleUpdate()"></select>
+    </div>
+  </div>
+
+  <!-- Fitness controls: given best in-year AG%, what NYCM? -->
+  <div id="ctrl-fitness" class="controls hidden">
+    <p class="tab-desc">Enter your best age/gender-graded % from a race 10M or longer this year to see how similarly-fit runners have finished NYCM.</p>
+    <div class="field">
+      <label>Gender</label>
+      <select id="fit-gender" aria-label="Gender" onchange="scheduleUpdate()">
+        <option value="any">Any</option>
+        <option value="M">Men</option>
+        <option value="F">Women</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Best in-year AG%</label>
+      <select id="fit-ag" aria-label="Best in-year AG%" onchange="scheduleUpdate()"></select>
     </div>
   </div>
 
@@ -285,6 +314,15 @@ const FWD_CENTERS = [
   "4:40:00","4:50:00","5:00:00",
 ];
 
+const FITNESS_CENTERS = [46.25, 48.75, 51.25, 53.75, 56.25, 58.75,
+                         61.25, 63.75, 66.25, 68.75, 71.25, 73.75, 76.25, 78.75];
+const FITNESS_LABELS  = {
+  "46.25": "45–47.5%", "48.75": "47.5–50%", "51.25": "50–52.5%", "53.75": "52.5–55%",
+  "56.25": "55–57.5%", "58.75": "57.5–60%", "61.25": "60–62.5%", "63.75": "62.5–65%",
+  "66.25": "65–67.5%", "68.75": "67.5–70%", "71.25": "70–72.5%", "73.75": "72.5–75%",
+  "76.25": "75–77.5%", "78.75": "77.5–80%",
+};
+
 // ── State ─────────────────────────────────────────────────────────────────
 let mode    = "target";
 let tgtRace = "bronx_10m";
@@ -345,6 +383,19 @@ function populateIndTime(race, selectVal) {
   if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
 }
 
+function populateFitAg(selectVal) {
+  const sel = document.getElementById("fit-ag");
+  if (!sel.options.length) {
+    FITNESS_CENTERS.forEach(c => {
+      const o = document.createElement("option");
+      o.value = String(c); o.textContent = FITNESS_LABELS[String(c)];
+      sel.appendChild(o);
+    });
+  }
+  const target = selectVal || "63.75";
+  if ([...sel.options].some(o => o.value === target)) sel.value = target;
+}
+
 function populateTgtTime(selectVal) {
   const sel = document.getElementById("tgt-time");
   if (!sel.options.length) {
@@ -375,14 +426,19 @@ function selectTgtRace(race) {
 function setMode(m) {
   const prevGender = mode === "indicator"
     ? document.getElementById("ind-gender").value
+    : mode === "fitness"
+    ? document.getElementById("fit-gender").value
     : document.getElementById("tgt-gender").value;
   mode = m;
   if (m === "indicator") document.getElementById("ind-gender").value = prevGender;
+  else if (m === "fitness") document.getElementById("fit-gender").value = prevGender;
   else                   document.getElementById("tgt-gender").value = prevGender;
   document.getElementById("btn-indicator").classList.toggle("active", m === "indicator");
   document.getElementById("btn-target").classList.toggle("active", m === "target");
+  document.getElementById("btn-fitness").classList.toggle("active", m === "fitness");
   document.getElementById("ctrl-indicator").classList.toggle("hidden", m !== "indicator");
   document.getElementById("ctrl-target").classList.toggle("hidden", m !== "target");
+  document.getElementById("ctrl-fitness").classList.toggle("hidden", m !== "fitness");
   document.getElementById("tgt-race-tabs").classList.toggle("hidden", m !== "target");
   scheduleUpdate(true);
 }
@@ -401,6 +457,10 @@ function currentPath() {
     const time   = document.getElementById("ind-time").value;
     const gender = document.getElementById("ind-gender").value;
     return `/indicator/${RACE_SLUG[race]}/${toSec(time)}?gender=${gender}`;
+  } else if (mode === "fitness") {
+    const ag     = document.getElementById("fit-ag").value;
+    const gender = document.getElementById("fit-gender").value;
+    return `/fitness/${ag}?gender=${gender}`;
   } else {
     const time   = document.getElementById("tgt-time").value;
     const gender = document.getElementById("tgt-gender").value;
@@ -420,6 +480,10 @@ function applyPermalink(path, search) {
     document.getElementById("ind-race").value   = race;
     document.getElementById("ind-gender").value = gender;
     populateIndTime(race, findClosest(indCenters(race), sec));
+  } else if (parts[0] === "fitness" && parts[1]) {
+    mode = "fitness";
+    document.getElementById("fit-gender").value = gender;
+    populateFitAg(parts[1]);
   } else if (parts[0] === "target" && parts[2]) {
     const sec = parseInt(parts[2], 10);
     mode = "target";
@@ -431,8 +495,10 @@ function applyPermalink(path, search) {
 
   document.getElementById("btn-indicator").classList.toggle("active", mode === "indicator");
   document.getElementById("btn-target").classList.toggle("active", mode === "target");
+  document.getElementById("btn-fitness").classList.toggle("active", mode === "fitness");
   document.getElementById("ctrl-indicator").classList.toggle("hidden", mode !== "indicator");
   document.getElementById("ctrl-target").classList.toggle("hidden", mode !== "target");
+  document.getElementById("ctrl-fitness").classList.toggle("hidden", mode !== "fitness");
   document.getElementById("tgt-race-tabs").classList.toggle("hidden", mode !== "target");
   return true;
 }
@@ -499,7 +565,7 @@ function renderScatter(canvasId, pairs, indLabel) {
 }
 
 // ── VDOT ──────────────────────────────────────────────────────────────────
-function vdotHtml(bucket, split) {
+function vdotHtml(bucket, split, cohortDesc = "this cohort") {
   let rows;
   if (split) {
     rows = [
@@ -556,10 +622,11 @@ function vdotHtml(bucket, split) {
   });
 
   svg += `</svg>`;
-  return `<div class="card"><div class="card-title">VDOT (Daniels) · higher = fitter</div>${svg}</div>`;
+  const vdotTip = `<i class="tip-icon">i<span class="tip-bubble">VDOT distribution for ${cohortDesc}. Each bar is one runner&#8217;s best race, orange = best in 5 years, blue = best in race year.</span></i>`;
+  return `<div class="card"><div class="card-title">VDOT (Daniels) · higher = fitter${vdotTip}</div>${svg}</div>`;
 }
 
-function agHtml(bucket, split) {
+function agHtml(bucket, split, cohortDesc = "this cohort") {
   let rows;
   if (split) {
     rows = [
@@ -613,7 +680,8 @@ function agHtml(bucket, split) {
   });
   svg += `</svg>`;
 
-  return `<div class="card"><div class="card-title">WMA age-graded %</div>${svg}</div>`;
+  const agTip = `<i class="tip-icon">i<span class="tip-bubble">Age/gender-graded fitness of ${cohortDesc}. Each bar shows a runner&#8217;s best race result as a % of the open world record at their age and gender, so a 65% runner is performing at 65% of what the age-group world record holder could do.</span></i>`;
+  return `<div class="card"><div class="card-title">WMA age-graded %${agTip}</div>${svg}</div>`;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
@@ -640,6 +708,9 @@ async function loadAndRender(isRetry = false) {
     } else {
       data = await fetchData(fileKey("indicator", race, gender));
     }
+  } else if (mode === "fitness") {
+    const gender = document.getElementById("fit-gender").value;
+    data = await fetchData(`fitness_${gender}`);
   } else {
     const gender = document.getElementById("tgt-gender").value;
     if (gender === "any") {
@@ -675,7 +746,66 @@ async function loadAndRender(isRetry = false) {
   } catch(e) {}
 
   if (mode === "indicator") renderIndicator(outEl, data, _splitData);
+  else if (mode === "fitness") renderFitness(outEl, data);
   else renderTarget(outEl, data, _splitData);
+}
+
+function renderFitness(outEl, data) {
+  const ag     = document.getElementById("fit-ag").value;
+  const gender = document.getElementById("fit-gender").value;
+  const bucket = data[ag];
+  const label  = FITNESS_LABELS[ag] || ag + "%";
+
+  if (!bucket) {
+    outEl.innerHTML = `<div class="no-data">No data for AG% ${label} (${gender}).</div>`;
+    return;
+  }
+
+  const p25 = bucket.p25 || fmt(bucket.p25_sec);
+  const p50 = bucket.p50 || fmt(bucket.p50_sec);
+  const p75 = bucket.p75 || fmt(bucket.p75_sec);
+
+  let html = "";
+  if (bucket.small_sample) html += `<div class="small-sample">Small sample (N=${bucket.n}) — percentiles may not be stable.</div>`;
+
+  html += `<div class="card">
+    <div class="card-title">NYCM finish distribution · runners with best in-year AG% ${label} (${gender})<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners whose best age/gender-graded race result this year fell in this fitness range. Drawn from pooled 2021–2025 NYCM fields.</span></i></div>
+    <div class="pct-row">
+      <div class="pct-item">
+        <div class="pct-label">P25</div>
+        <div class="pct-val">${p25}</div>
+        <div class="pct-sub">${fmtPace(bucket.p25_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">75% were slower</div>
+      </div>
+      <div class="pct-item">
+        <div class="pct-label">P50</div>
+        <div class="pct-val p50">${p50}</div>
+        <div class="pct-sub">${fmtPace(bucket.p50_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">half were slower</div>
+      </div>
+      <div class="pct-item">
+        <div class="pct-label">P75</div>
+        <div class="pct-val">${p75}</div>
+        <div class="pct-sub">${fmtPace(bucket.p75_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">25% were slower</div>
+      </div>
+    </div>
+    <div class="meta-line" style="margin-top:8px">N runners: ${bucket.n}</div>
+  </div>`;
+
+  html += `<div class="charts">
+    <div class="chart-wrap"><div class="chart-title">NYCM finishes for AG% ${label}</div><canvas id="hist-canvas" height="180"></canvas></div>
+  </div>`;
+
+  html += `<div class="reasoning">
+    <strong>${bucket.n}</strong> runners whose best in-year AG% (from any NYRR race ≥10M, excluding the marathon) fell in the <strong>${label}</strong> range finished NYCM with a median of <strong>${p50}</strong> (P25–P75: ${p25}–${p75}).
+    <br><br><span style="font-size:12px">Pooled across years 2021, 2023, 2024, 2025. AG% uses WMA 2023 marathon age-grading factors.
+    The best in-year race is determined by highest AG% among all NYRR races ≥10M run in the marathon year.
+    Race effort varies — a runner doing a hard tune-up half will show higher AG% than one doing an easy long run; this skews results toward runners who raced their indicator races.</span>
+  </div>`;
+
+  outEl.innerHTML = html;
+  if (bucket.histogram?.length) renderHistogram("hist-canvas", bucket.histogram, "#2563eb");
 }
 
 function renderIndicator(outEl, data, splitData) {
@@ -704,7 +834,7 @@ function renderIndicator(outEl, data, splitData) {
   if (smallSample) html += `<div class="small-sample">Small sample (N=${bucket.n_nycm}) — percentiles may not be stable.</div>`;
 
   html += `<div class="card">
-    <div class="card-title">NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""} (${gender})</div>
+    <div class="card-title">NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""} (${gender})<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners who raced this indicator in the selected window. P25/P50/P75 are the 25th, 50th, and 75th percentile finish times, half the group fell between P25 and P75.</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
         <div class="pct-label">P25</div>
@@ -728,8 +858,9 @@ function renderIndicator(outEl, data, splitData) {
     ${riegelPred ? `<div class="riegel-line">Riegel prediction: <span>${riegelPred}</span>${medErr != null ? ` · cohort ran <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median)` : ""}</div>` : ""}
     <div class="meta-line" style="margin-top:8px">N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${bucket.n_nycm} (${bucket.pct_nycm ?? "—"}%)</div>
   </div>`;
-  html += vdotHtml(bucket, split);
-  html += agHtml(bucket, split);
+  const indCohort = `runners who raced ${raceLabel} in the selected window`;
+  html += vdotHtml(bucket, split, indCohort);
+  html += agHtml(bucket, split, indCohort);
 
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">NYCM finishes</div><canvas id="hist-canvas" height="180"></canvas></div>
@@ -788,7 +919,7 @@ function renderTarget(outEl, data, splitData) {
   const medErr = raceData.riegel_median_error_sec;
 
   html += `<div class="card">
-    <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min (${gender})</div>
+    <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min (${gender})<i class="tip-icon">i<span class="tip-bubble">Indicator race times for runners who finished NYCM near your target. The bar shows the middle 50% of this cohort (P25 to P75).</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
         <div class="pct-label">P25</div>
@@ -809,8 +940,9 @@ function renderTarget(outEl, data, splitData) {
     ${medErr != null ? `<div class="riegel-line">Riegel median error: <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> (cohort ran ${medErr >= 0 ? "slower" : "faster"} than Riegel)</div>` : ""}
     <div class="meta-line" style="margin-top:8px">N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${raceData.n_matched} (${raceData.pct_ran ?? "—"}%)</div>
   </div>`;
-  html += vdotHtml(bucket, split);
-  html += agHtml(bucket, split);
+  const tgtCohort = `runners who finished NYCM near ${time}`;
+  html += vdotHtml(bucket, split, tgtCohort);
+  html += agHtml(bucket, split, tgtCohort);
 
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">${raceLabel} times for NYCM ~${time}</div><canvas id="hist-canvas" height="180"></canvas></div>
@@ -838,6 +970,7 @@ function renderTarget(outEl, data, splitData) {
 (function init() {
   populateIndTime("bronx_10m");
   populateTgtTime();
+  populateFitAg();
 
   let path = location.pathname, search = location.search;
   try {
