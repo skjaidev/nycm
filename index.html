@@ -858,14 +858,14 @@ function renderIndicator(outEl, data, splitData) {
     ${riegelPred ? `<div class="riegel-line">Riegel prediction: <span>${riegelPred}</span>${medErr != null ? ` · cohort ran <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median)` : ""}</div>` : ""}
     <div class="meta-line" style="margin-top:8px">N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${bucket.n_nycm} (${bucket.pct_nycm ?? "—"}%)</div>
   </div>`;
-  const indCohort = `runners who raced ${raceLabel} in the selected window`;
-  html += vdotHtml(bucket, split, indCohort);
-  html += agHtml(bucket, split, indCohort);
-
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">NYCM finishes</div><canvas id="hist-canvas" height="180"></canvas></div>
     <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="240"></canvas></div>
   </div>`;
+
+  const indCohort = `runners who raced ${raceLabel} in the selected window`;
+  html += vdotHtml(bucket, split, indCohort);
+  html += agHtml(bucket, split, indCohort);
 
   const absErr = medErr != null ? fmt(Math.abs(medErr)) : null;
   html += `<div class="reasoning">
@@ -940,14 +940,14 @@ function renderTarget(outEl, data, splitData) {
     ${medErr != null ? `<div class="riegel-line">Riegel median error: <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> (cohort ran ${medErr >= 0 ? "slower" : "faster"} than Riegel)</div>` : ""}
     <div class="meta-line" style="margin-top:8px">N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${raceData.n_matched} (${raceData.pct_ran ?? "—"}%)</div>
   </div>`;
-  const tgtCohort = `runners who finished NYCM near ${time}`;
-  html += vdotHtml(bucket, split, tgtCohort);
-  html += agHtml(bucket, split, tgtCohort);
-
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">${raceLabel} times for NYCM ~${time}</div><canvas id="hist-canvas" height="180"></canvas></div>
     <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="240"></canvas></div>
   </div>`;
+
+  const tgtCohort = `runners who finished NYCM near ${time}`;
+  html += vdotHtml(bucket, split, tgtCohort);
+  html += agHtml(bucket, split, tgtCohort);
 
   html += `<div class="reasoning">
     <strong>${bucket.n_cohort}</strong> runners finished NYCM within 5 minutes of <strong>${time}</strong>.
