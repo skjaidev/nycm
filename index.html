@@ -214,6 +214,7 @@ function mergeIndicatorData(dataM, dataF) {
       histogram: buildHistogram(nycmSec),
       small_sample: nNycm < 15,
       vdot_ever_p50: null, vdot_year_p50: null,
+      ag_ever_p50:   null, ag_year_p50:   null,
     };
   }
   return merged;
@@ -252,6 +253,7 @@ function mergeTargetData(dataM, dataF) {
       ...bM, races,
       n_cohort: (bM.n_cohort || 0) + (bF.n_cohort || 0),
       vdot_ever_p50: null, vdot_year_p50: null,
+      ag_ever_p50:   null, ag_year_p50:   null,
     };
   }
   return merged;
@@ -557,6 +559,63 @@ function vdotHtml(bucket, split) {
   return `<div class="card"><div class="card-title">VDOT (Daniels) · higher = fitter</div>${svg}</div>`;
 }
 
+function agHtml(bucket, split) {
+  let rows;
+  if (split) {
+    rows = [
+      split.M?.ag_ever_p50 != null && { label: `M · 5-yr best (N=${split.M.ag_ever_n ?? "?"})`, p25: split.M.ag_ever_p25, p50: split.M.ag_ever_p50, p75: split.M.ag_ever_p75, color: "#fb923c" },
+      split.M?.ag_year_p50 != null && { label: `M · Race year (N=${split.M.ag_year_n ?? "?"})`, p25: split.M.ag_year_p25, p50: split.M.ag_year_p50, p75: split.M.ag_year_p75, color: "#60a5fa" },
+      split.F?.ag_ever_p50 != null && { label: `F · 5-yr best (N=${split.F.ag_ever_n ?? "?"})`, p25: split.F.ag_ever_p25, p50: split.F.ag_ever_p50, p75: split.F.ag_ever_p75, color: "#fb923c" },
+      split.F?.ag_year_p50 != null && { label: `F · Race year (N=${split.F.ag_year_n ?? "?"})`, p25: split.F.ag_year_p25, p50: split.F.ag_year_p50, p75: split.F.ag_year_p75, color: "#60a5fa" },
+    ].filter(Boolean);
+  } else {
+    const ev = bucket.ag_ever_p50, yr = bucket.ag_year_p50;
+    if (!ev && !yr) return "";
+    rows = [
+      { label: `5-yr best (N=${bucket.ag_ever_n ?? "?"})`, p25: bucket.ag_ever_p25, p50: bucket.ag_ever_p50, p75: bucket.ag_ever_p75, color: "#fb923c" },
+      { label: `Race year (N=${bucket.ag_year_n ?? "?"})`, p25: bucket.ag_year_p25, p50: bucket.ag_year_p50, p75: bucket.ag_year_p75, color: "#60a5fa" },
+    ];
+  }
+  rows = rows.filter(r => r.p50 != null);
+  if (!rows.length) return "";
+
+  const allVals = rows.flatMap(r => [r.p25, r.p75].filter(v => v != null));
+  if (allVals.length === 0) return "";
+  const lo = Math.floor(Math.min(...allVals)) - 2;
+  const hi = Math.ceil(Math.max(...allVals)) + 2;
+  const range = hi - lo;
+
+  const W = 400, PAD_L = 100, PAD_R = 12, PAD_T = 18, PAD_B = 20;
+  const plotW = W - PAD_L - PAD_R;
+  const rowH = 7, rowGap = 14;
+  const totalH = PAD_T + rows.length * (rowH + rowGap) - rowGap + 4 + PAD_B;
+  const px = v => PAD_L + (v - lo) / range * plotW;
+
+  let svg = `<svg width="100%" viewBox="0 0 ${W} ${totalH}" style="display:block;overflow:visible">`;
+  const axY = totalH - PAD_B + 4;
+  svg += `<line x1="${PAD_L}" y1="${axY}" x2="${W - PAD_R}" y2="${axY}" stroke="var(--border)" stroke-width="1"/>`;
+  const step = range <= 12 ? 2 : range <= 20 ? 5 : 10;
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+    const tx = px(v);
+    svg += `<line x1="${tx}" y1="${axY}" x2="${tx}" y2="${axY + 3}" stroke="var(--muted)" stroke-width="1"/>`;
+    svg += `<text x="${tx}" y="${axY + 13}" text-anchor="middle" font-size="9" fill="var(--muted)">${v}%</text>`;
+  }
+  rows.forEach((r, i) => {
+    const bY = PAD_T + i * (rowH + rowGap);
+    const bH = rowH;
+    svg += `<text x="${PAD_L - 6}" y="${bY + bH / 2 + 3.5}" text-anchor="end" font-size="10" fill="var(--muted)">${r.label}</text>`;
+    if (r.p25 != null && r.p75 != null) {
+      svg += `<rect x="${px(r.p25)}" y="${bY}" width="${px(r.p75) - px(r.p25)}" height="${bH}" fill="${r.color}28" stroke="${r.color}99" stroke-width="1" rx="2"/>`;
+      svg += `<line x1="${px(r.p50)}" y1="${bY}" x2="${px(r.p50)}" y2="${bY + bH}" stroke="${r.color}" stroke-width="2.5"/>`;
+      const cx = (px(r.p25) + px(r.p75)) / 2;
+      svg += `<text x="${cx}" y="${bY - 4}" text-anchor="middle" font-size="8" fill="var(--muted)">P25: ${r.p25}%  ·  <tspan font-weight="600" fill="${r.color}">P50: ${r.p50}%</tspan>  ·  P75: ${r.p75}%</text>`;
+    }
+  });
+  svg += `</svg>`;
+
+  return `<div class="card"><div class="card-title">WMA age-graded %</div>${svg}</div>`;
+}
+
 // ── Render ────────────────────────────────────────────────────────────────
 async function loadAndRender(isRetry = false) {
   const gen = ++renderGen;
@@ -670,6 +729,7 @@ function renderIndicator(outEl, data, splitData) {
     <div class="meta-line" style="margin-top:8px">N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${bucket.n_nycm} (${bucket.pct_nycm ?? "—"}%)</div>
   </div>`;
   html += vdotHtml(bucket, split);
+  html += agHtml(bucket, split);
 
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">NYCM finishes</div><canvas id="hist-canvas" height="180"></canvas></div>
@@ -750,6 +810,7 @@ function renderTarget(outEl, data, splitData) {
     <div class="meta-line" style="margin-top:8px">N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${raceData.n_matched} (${raceData.pct_ran ?? "—"}%)</div>
   </div>`;
   html += vdotHtml(bucket, split);
+  html += agHtml(bucket, split);
 
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">${raceLabel} times for NYCM ~${time}</div><canvas id="hist-canvas" height="180"></canvas></div>
