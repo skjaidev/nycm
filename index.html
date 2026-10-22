@@ -501,10 +501,10 @@ function vdotHtml(bucket, split) {
   let rows;
   if (split) {
     rows = [
-      split.M?.vdot_ever_p50 != null && { label: `M · 5-yr best (N=${split.M.vdot_ever_n ?? "?"})`, p25: split.M.vdot_ever_p25, p50: split.M.vdot_ever_p50, p75: split.M.vdot_ever_p75, color: "#60a5fa" },
-      split.M?.vdot_year_p50 != null && { label: `M · Race year (N=${split.M.vdot_year_n ?? "?"})`, p25: split.M.vdot_year_p25, p50: split.M.vdot_year_p50, p75: split.M.vdot_year_p75, color: "#93c5fd" },
-      split.F?.vdot_ever_p50 != null && { label: `F · 5-yr best (N=${split.F.vdot_ever_n ?? "?"})`, p25: split.F.vdot_ever_p25, p50: split.F.vdot_ever_p50, p75: split.F.vdot_ever_p75, color: "#f472b6" },
-      split.F?.vdot_year_p50 != null && { label: `F · Race year (N=${split.F.vdot_year_n ?? "?"})`, p25: split.F.vdot_year_p25, p50: split.F.vdot_year_p50, p75: split.F.vdot_year_p75, color: "#f9a8d4" },
+      split.M?.vdot_ever_p50 != null && { label: `M · 5-yr best (N=${split.M.vdot_ever_n ?? "?"})`, p25: split.M.vdot_ever_p25, p50: split.M.vdot_ever_p50, p75: split.M.vdot_ever_p75, color: "#fb923c" },
+      split.M?.vdot_year_p50 != null && { label: `M · Race year (N=${split.M.vdot_year_n ?? "?"})`, p25: split.M.vdot_year_p25, p50: split.M.vdot_year_p50, p75: split.M.vdot_year_p75, color: "#60a5fa" },
+      split.F?.vdot_ever_p50 != null && { label: `F · 5-yr best (N=${split.F.vdot_ever_n ?? "?"})`, p25: split.F.vdot_ever_p25, p50: split.F.vdot_ever_p50, p75: split.F.vdot_ever_p75, color: "#fb923c" },
+      split.F?.vdot_year_p50 != null && { label: `F · Race year (N=${split.F.vdot_year_n ?? "?"})`, p25: split.F.vdot_year_p25, p50: split.F.vdot_year_p50, p75: split.F.vdot_year_p75, color: "#60a5fa" },
     ].filter(Boolean);
   } else {
     const ev = bucket.vdot_ever_p50, yr = bucket.vdot_year_p50;
@@ -525,7 +525,7 @@ function vdotHtml(bucket, split) {
 
   const W = 400, PAD_L = 100, PAD_R = 12, PAD_T = 18, PAD_B = 20;
   const plotW = W - PAD_L - PAD_R;
-  const rowH = 12, rowGap = 14;
+  const rowH = 7, rowGap = 14;
   const totalH = PAD_T + rows.length * (rowH + rowGap) - rowGap + 4 + PAD_B;
   const px = v => PAD_L + (v - lo) / range * plotW;
 
