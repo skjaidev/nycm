@@ -497,14 +497,25 @@ function renderScatter(canvasId, pairs, indLabel) {
 }
 
 // ── VDOT ──────────────────────────────────────────────────────────────────
-function vdotHtml(bucket) {
-  const ev = bucket.vdot_ever_p50, yr = bucket.vdot_year_p50;
-  if (!ev && !yr) return "";
-
-  const rows = [
-    { label: `5-yr best (N=${bucket.vdot_ever_n ?? "?"})`,  p25: bucket.vdot_ever_p25,  p50: bucket.vdot_ever_p50,  p75: bucket.vdot_ever_p75,  color: "#fb923c" },
-    { label: `Race year (N=${bucket.vdot_year_n ?? "?"})`,  p25: bucket.vdot_year_p25,  p50: bucket.vdot_year_p50,  p75: bucket.vdot_year_p75,  color: "#60a5fa" },
-  ].filter(r => r.p50 != null);
+function vdotHtml(bucket, split) {
+  let rows;
+  if (split) {
+    rows = [
+      split.M?.vdot_ever_p50 != null && { label: `M · 5-yr best (N=${split.M.vdot_ever_n ?? "?"})`, p25: split.M.vdot_ever_p25, p50: split.M.vdot_ever_p50, p75: split.M.vdot_ever_p75, color: "#60a5fa" },
+      split.M?.vdot_year_p50 != null && { label: `M · Race year (N=${split.M.vdot_year_n ?? "?"})`, p25: split.M.vdot_year_p25, p50: split.M.vdot_year_p50, p75: split.M.vdot_year_p75, color: "#93c5fd" },
+      split.F?.vdot_ever_p50 != null && { label: `F · 5-yr best (N=${split.F.vdot_ever_n ?? "?"})`, p25: split.F.vdot_ever_p25, p50: split.F.vdot_ever_p50, p75: split.F.vdot_ever_p75, color: "#f472b6" },
+      split.F?.vdot_year_p50 != null && { label: `F · Race year (N=${split.F.vdot_year_n ?? "?"})`, p25: split.F.vdot_year_p25, p50: split.F.vdot_year_p50, p75: split.F.vdot_year_p75, color: "#f9a8d4" },
+    ].filter(Boolean);
+  } else {
+    const ev = bucket.vdot_ever_p50, yr = bucket.vdot_year_p50;
+    if (!ev && !yr) return "";
+    rows = [
+      { label: `5-yr best (N=${bucket.vdot_ever_n ?? "?"})`, p25: bucket.vdot_ever_p25, p50: bucket.vdot_ever_p50, p75: bucket.vdot_ever_p75, color: "#fb923c" },
+      { label: `Race year (N=${bucket.vdot_year_n ?? "?"})`, p25: bucket.vdot_year_p25, p50: bucket.vdot_year_p50, p75: bucket.vdot_year_p75, color: "#60a5fa" },
+    ];
+  }
+  rows = rows.filter(r => r.p50 != null);
+  if (!rows.length) return "";
 
   const allVals = rows.flatMap(r => [r.p25, r.p75].filter(v => v != null));
   if (allVals.length === 0) return "";
@@ -556,7 +567,7 @@ async function loadAndRender(isRetry = false) {
   loadEl.classList.remove("hidden");
   outEl.classList.add("pending");
 
-  let data = {};
+  let data = {}, _splitData = null;
   if (mode === "indicator") {
     const race   = document.getElementById("ind-race").value;
     const gender = document.getElementById("ind-gender").value;
@@ -566,6 +577,7 @@ async function loadAndRender(isRetry = false) {
         fetchData(fileKey("indicator", race, "F")),
       ]);
       data = mergeIndicatorData(dM, dF);
+      _splitData = {M: dM, F: dF};
     } else {
       data = await fetchData(fileKey("indicator", race, gender));
     }
@@ -577,6 +589,7 @@ async function loadAndRender(isRetry = false) {
         fetchData(fileKey("target", null, "F")),
       ]);
       data = mergeTargetData(dM, dF);
+      _splitData = {M: dM, F: dF};
     } else {
       data = await fetchData(fileKey("target", null, gender));
     }
@@ -602,15 +615,16 @@ async function loadAndRender(isRetry = false) {
     if (typeof gtag !== "undefined") gtag('event', 'page_view', { page_path: path, page_title: document.title });
   } catch(e) {}
 
-  if (mode === "indicator") renderIndicator(outEl, data);
-  else renderTarget(outEl, data);
+  if (mode === "indicator") renderIndicator(outEl, data, _splitData);
+  else renderTarget(outEl, data, _splitData);
 }
 
-function renderIndicator(outEl, data) {
+function renderIndicator(outEl, data, splitData) {
   const race   = document.getElementById("ind-race").value;
   const time   = document.getElementById("ind-time").value;
   const gender = document.getElementById("ind-gender").value;
   const bucket = data[time];
+  const split  = splitData ? {M: splitData.M[time], F: splitData.F[time]} : null;
 
   if (!bucket) {
     outEl.innerHTML = `<div class="no-data">No data for ${RACE_LABELS[race]} ${time} (${gender}).</div>`;
@@ -655,7 +669,7 @@ function renderIndicator(outEl, data) {
     ${riegelPred ? `<div class="riegel-line">Riegel prediction: <span>${riegelPred}</span>${medErr != null ? ` · cohort ran <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median)` : ""}</div>` : ""}
     <div class="meta-line" style="margin-top:8px">N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${bucket.n_nycm} (${bucket.pct_nycm ?? "—"}%)</div>
   </div>`;
-  html += vdotHtml(bucket);
+  html += vdotHtml(bucket, split);
 
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">NYCM finishes</div><canvas id="hist-canvas" height="180"></canvas></div>
@@ -681,10 +695,11 @@ function renderIndicator(outEl, data) {
   if (bucket.pairs?.length) renderScatter("scatter-canvas", bucket.pairs, raceLabel);
 }
 
-function renderTarget(outEl, data) {
+function renderTarget(outEl, data, splitData) {
   const time   = document.getElementById("tgt-time").value;
   const gender = document.getElementById("tgt-gender").value;
   const bucket = data[time];
+  const split  = splitData ? {M: splitData.M[time], F: splitData.F[time]} : null;
 
   if (!bucket) {
     outEl.innerHTML = `<div class="no-data">No data for NYCM ${time} (${gender}).</div>`;
@@ -734,7 +749,7 @@ function renderTarget(outEl, data) {
     ${medErr != null ? `<div class="riegel-line">Riegel median error: <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> (cohort ran ${medErr >= 0 ? "slower" : "faster"} than Riegel)</div>` : ""}
     <div class="meta-line" style="margin-top:8px">N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${raceData.n_matched} (${raceData.pct_ran ?? "—"}%)</div>
   </div>`;
-  html += vdotHtml(bucket);
+  html += vdotHtml(bucket, split);
 
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">${raceLabel} times for NYCM ~${time}</div><canvas id="hist-canvas" height="180"></canvas></div>
