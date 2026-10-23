@@ -168,6 +168,18 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
       <label>Best in-year AG%</label>
       <select id="fit-ag" aria-label="Best in-year AG%" onchange="scheduleUpdate()"></select>
     </div>
+    <div class="field">
+      <label>Age group</label>
+      <select id="fit-age" aria-label="Age group" onchange="scheduleUpdate()">
+        <option value="any">Any age</option>
+        <option value="18-29">18–29</option>
+        <option value="30-39">30–39</option>
+        <option value="40-49">40–49</option>
+        <option value="50-59">50–59</option>
+        <option value="60-69">60–69</option>
+        <option value="70+">70+</option>
+      </select>
+    </div>
   </div>
 
   <!-- Indicator race tabs for target mode -->
@@ -458,9 +470,10 @@ function currentPath() {
     const gender = document.getElementById("ind-gender").value;
     return `/indicator/${RACE_SLUG[race]}/${toSec(time)}?gender=${gender}`;
   } else if (mode === "fitness") {
-    const ag     = document.getElementById("fit-ag").value;
-    const gender = document.getElementById("fit-gender").value;
-    return `/fitness/${ag}?gender=${gender}`;
+    const ag       = document.getElementById("fit-ag").value;
+    const gender   = document.getElementById("fit-gender").value;
+    const ageGroup = document.getElementById("fit-age").value;
+    return `/fitness/${ag}?gender=${gender}&age=${ageGroup}`;
   } else {
     const time   = document.getElementById("tgt-time").value;
     const gender = document.getElementById("tgt-gender").value;
@@ -481,8 +494,10 @@ function applyPermalink(path, search) {
     document.getElementById("ind-gender").value = gender;
     populateIndTime(race, findClosest(indCenters(race), sec));
   } else if (parts[0] === "fitness" && parts[1]) {
+    const ageGroup = new URLSearchParams(search).get("age") || "any";
     mode = "fitness";
     document.getElementById("fit-gender").value = gender;
+    document.getElementById("fit-age").value    = ageGroup;
     populateFitAg(parts[1]);
   } else if (parts[0] === "target" && parts[2]) {
     const sec = parseInt(parts[2], 10);
@@ -751,25 +766,40 @@ async function loadAndRender(isRetry = false) {
 }
 
 function renderFitness(outEl, data) {
-  const ag     = document.getElementById("fit-ag").value;
-  const gender = document.getElementById("fit-gender").value;
-  const bucket = data[ag];
-  const label  = FITNESS_LABELS[ag] || ag + "%";
+  const ag        = document.getElementById("fit-ag").value;
+  const gender    = document.getElementById("fit-gender").value;
+  const ageGroup  = document.getElementById("fit-age").value;
+  const topBucket = data[ag];
+  const label     = FITNESS_LABELS[ag] || ag + "%";
 
-  if (!bucket) {
+  if (!topBucket) {
     outEl.innerHTML = `<div class="no-data">No data for AG% ${label} (${gender}).</div>`;
     return;
   }
+
+  const bucket = (ageGroup !== "any" && topBucket.age_buckets?.[ageGroup]) || topBucket;
+  const ageLabel = ageGroup === "any" ? "all ages" : `age ${ageGroup}`;
+  const noAgeData = ageGroup !== "any" && !topBucket.age_buckets?.[ageGroup];
 
   const p25 = bucket.p25 || fmt(bucket.p25_sec);
   const p50 = bucket.p50 || fmt(bucket.p50_sec);
   const p75 = bucket.p75 || fmt(bucket.p75_sec);
 
   let html = "";
-  if (bucket.small_sample) html += `<div class="small-sample">Small sample (N=${bucket.n}) — percentiles may not be stable.</div>`;
+  if (noAgeData) {
+    html += `<div class="small-sample">No data for age group ${ageGroup} in this AG% bin.</div>`;
+    outEl.innerHTML = html;
+    return;
+  }
+  if (ageGroup === "any") {
+    html += `<div class="weak-warn">Showing all ages — the half-to-marathon conversion varies by age group. Select an age group for a tighter estimate.</div>`;
+  }
+  if (bucket.small_sample) {
+    html += `<div class="small-sample">Small sample (N=${bucket.n}) — percentiles may not be stable.</div>`;
+  }
 
   html += `<div class="card">
-    <div class="card-title">NYCM finish distribution · runners with best in-year AG% ${label} (${gender})<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners whose best age/gender-graded race result this year fell in this fitness range. Drawn from pooled 2021–2025 NYCM fields.</span></i></div>
+    <div class="card-title">NYCM finish distribution · AG% ${label}, ${ageLabel} (${gender})<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners whose best age/gender-graded race result this year fell in this fitness range. Drawn from pooled 2021–2025 NYCM fields.</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
         <div class="pct-label">P25</div>
@@ -794,13 +824,12 @@ function renderFitness(outEl, data) {
   </div>`;
 
   html += `<div class="charts">
-    <div class="chart-wrap"><div class="chart-title">NYCM finishes for AG% ${label}</div><canvas id="hist-canvas" height="180"></canvas></div>
+    <div class="chart-wrap"><div class="chart-title">NYCM finishes for AG% ${label}, ${ageLabel}</div><canvas id="hist-canvas" height="180"></canvas></div>
   </div>`;
 
   html += `<div class="reasoning">
-    <strong>${bucket.n}</strong> runners whose best in-year AG% (from any NYRR race ≥10M, excluding the marathon) fell in the <strong>${label}</strong> range finished NYCM with a median of <strong>${p50}</strong> (P25–P75: ${p25}–${p75}).
-    <br><br><span style="font-size:12px">Pooled across years 2021, 2023, 2024, 2025. AG% uses WMA 2023 marathon age-grading factors.
-    The best in-year race is determined by highest AG% among all NYRR races ≥10M run in the marathon year.
+    <strong>${bucket.n}</strong> runners (${ageLabel}) whose best in-year AG% fell in the <strong>${label}</strong> range finished NYCM with a median of <strong>${p50}</strong> (P25–P75: ${p25}–${p75}).
+    <br><br><span style="font-size:12px">Pooled across years 2021, 2023, 2024, 2025. AG% uses WMA 2023 age-grading factors applied to best NYRR race ≥10M in the marathon year.
     Race effort varies — a runner doing a hard tune-up half will show higher AG% than one doing an easy long run; this skews results toward runners who raced their indicator races.</span>
   </div>`;
 
