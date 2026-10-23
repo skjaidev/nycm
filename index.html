@@ -799,14 +799,14 @@ function renderFitness(outEl, data) {
     return;
   }
   if (ageGroup === "any") {
-    html += `<div class="weak-warn">Showing all ages — the half-to-marathon conversion varies by age group. Select an age group for a tighter estimate.</div>`;
+    html += `<div class="weak-warn">Showing all ages. The indicator-to-marathon conversion varies by age group. Select an age group for a tighter estimate.</div>`;
   }
   if (bucket.small_sample) {
-    html += `<div class="small-sample">Small sample (N=${bucket.n}) — percentiles may not be stable.</div>`;
+    html += `<div class="small-sample">Small sample (N=${bucket.n}). Percentiles may not be stable.</div>`;
   }
 
   html += `<div class="card">
-    <div class="card-title">NYCM finish distribution · AG% ${label}, ${ageLabel} (${gender})<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners whose best age/gender-graded race result this year fell in this fitness range. Drawn from pooled 2021–2025 NYCM fields.</span></i></div>
+    <div class="card-title">NYCM finish distribution · AG% ${label}, ${ageLabel} (${gender})<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners whose best age/gender-graded result (from any NYRR race 10M or longer this year) was in the ${label} range. Drawn from pooled 2021-2025 NYCM fields.</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
         <div class="pct-label">P25</div>
@@ -837,7 +837,7 @@ function renderFitness(outEl, data) {
   html += `<div class="reasoning">
     <strong>${bucket.n}</strong> runners (${ageLabel}) whose best in-year AG% fell in the <strong>${label}</strong> range finished NYCM with a median of <strong>${p50}</strong> (P25–P75: ${p25}–${p75}).
     <br><br><span style="font-size:12px">Pooled across years 2021, 2023, 2024, 2025. AG% uses WMA 2023 age-grading factors applied to best NYRR race ≥10M in the marathon year.
-    Race effort varies — a runner doing a hard tune-up half will show higher AG% than one doing an easy long run; this skews results toward runners who raced their indicator races.</span>
+    Race effort varies: a runner doing a hard tune-up half will show higher AG% than one doing an easy long run, which skews results toward runners who raced their indicator races.</span>
   </div>`;
 
   outEl.innerHTML = html;
