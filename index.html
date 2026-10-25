@@ -835,8 +835,8 @@ function renderFitness(outEl, data) {
   </div>`;
 
   const fitCohort = `runners whose best in-year AG% was in the ${label} range`;
-  html += vdotHtml(bucket, null, fitCohort);
-  html += agHtml(bucket, null, fitCohort);
+  html += vdotHtml(topBucket, null, fitCohort);
+  html += agHtml(topBucket, null, fitCohort);
 
   html += `<div class="reasoning">
     <strong>${bucket.n}</strong> runners (${ageLabel}) whose best in-year AG% fell in the <strong>${label}</strong> range finished NYCM with a median of <strong>${p50}</strong> (P25–P75: ${p25}–${p75}).
