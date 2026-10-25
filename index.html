@@ -613,13 +613,13 @@ function vdotHtml(bucket, split, cohortDesc = "this cohort") {
   const hi = Math.ceil(Math.max(...allVals)) + 2;
   const range = hi - lo;
 
-  const W = 400, PAD_L = 100, PAD_R = 12, PAD_T = 18, PAD_B = 20;
+  const W = 400, PAD_L = 108, PAD_R = 12, PAD_T = 18, PAD_B = 20;
   const plotW = W - PAD_L - PAD_R;
   const rowH = 7, rowGap = 14;
   const totalH = PAD_T + rows.length * (rowH + rowGap) - rowGap + 4 + PAD_B;
   const px = v => PAD_L + (v - lo) / range * plotW;
 
-  let svg = `<svg width="100%" viewBox="0 0 ${W} ${totalH}" style="display:block;overflow:visible">`;
+  let svg = `<svg width="100%" viewBox="0 0 ${W} ${totalH}" style="display:block">`;
 
   // axis
   const axY = totalH - PAD_B + 4;
@@ -634,7 +634,7 @@ function vdotHtml(bucket, split, cohortDesc = "this cohort") {
   rows.forEach((r, i) => {
     const bY = PAD_T + i * (rowH + rowGap);
     const bH = rowH;
-    svg += `<text x="${PAD_L - 6}" y="${bY + bH / 2 + 3.5}" text-anchor="end" font-size="10" fill="var(--muted)">${r.label}</text>`;
+    svg += `<text x="${PAD_L - 5}" y="${bY + bH / 2 + 3.5}" text-anchor="end" font-size="8" fill="var(--muted)">${r.label}</text>`;
     if (r.p25 != null && r.p75 != null) {
       svg += `<rect x="${px(r.p25)}" y="${bY}" width="${px(r.p75) - px(r.p25)}" height="${bH}" fill="${r.color}28" stroke="${r.color}99" stroke-width="1" rx="2"/>`;
       svg += `<line x1="${px(r.p50)}" y1="${bY}" x2="${px(r.p50)}" y2="${bY + bH}" stroke="${r.color}" stroke-width="2.5"/>`;
@@ -674,13 +674,13 @@ function agHtml(bucket, split, cohortDesc = "this cohort") {
   const hi = Math.ceil(Math.max(...allVals)) + 2;
   const range = hi - lo;
 
-  const W = 400, PAD_L = 100, PAD_R = 12, PAD_T = 18, PAD_B = 20;
+  const W = 400, PAD_L = 108, PAD_R = 12, PAD_T = 18, PAD_B = 20;
   const plotW = W - PAD_L - PAD_R;
   const rowH = 7, rowGap = 14;
   const totalH = PAD_T + rows.length * (rowH + rowGap) - rowGap + 4 + PAD_B;
   const px = v => PAD_L + (v - lo) / range * plotW;
 
-  let svg = `<svg width="100%" viewBox="0 0 ${W} ${totalH}" style="display:block;overflow:visible">`;
+  let svg = `<svg width="100%" viewBox="0 0 ${W} ${totalH}" style="display:block">`;
   const axY = totalH - PAD_B + 4;
   svg += `<line x1="${PAD_L}" y1="${axY}" x2="${W - PAD_R}" y2="${axY}" stroke="var(--border)" stroke-width="1"/>`;
   const step = range <= 12 ? 2 : range <= 20 ? 5 : 10;
@@ -692,7 +692,7 @@ function agHtml(bucket, split, cohortDesc = "this cohort") {
   rows.forEach((r, i) => {
     const bY = PAD_T + i * (rowH + rowGap);
     const bH = rowH;
-    svg += `<text x="${PAD_L - 6}" y="${bY + bH / 2 + 3.5}" text-anchor="end" font-size="10" fill="var(--muted)">${r.label}</text>`;
+    svg += `<text x="${PAD_L - 5}" y="${bY + bH / 2 + 3.5}" text-anchor="end" font-size="8" fill="var(--muted)">${r.label}</text>`;
     if (r.p25 != null && r.p75 != null) {
       svg += `<rect x="${px(r.p25)}" y="${bY}" width="${px(r.p75) - px(r.p25)}" height="${bH}" fill="${r.color}28" stroke="${r.color}99" stroke-width="1" rx="2"/>`;
       svg += `<line x1="${px(r.p50)}" y1="${bY}" x2="${px(r.p50)}" y2="${bY + bH}" stroke="${r.color}" stroke-width="2.5"/>`;
@@ -903,6 +903,10 @@ function renderIndicator(outEl, data, splitData) {
     <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="240"></canvas></div>
   </div>`;
 
+  const indCohort = `runners who raced ${raceLabel} in the selected window`;
+  html += vdotHtml(bucket, split, indCohort);
+  html += agHtml(bucket, split, indCohort);
+
   const absErr = medErr != null ? fmt(Math.abs(medErr)) : null;
   html += `<div class="reasoning">
     <strong>${bucket.n_indicator || "?"}</strong> runners finished ${raceLabel} between <strong>${bucket.lo}</strong> and <strong>${bucket.hi}</strong>.
@@ -980,6 +984,10 @@ function renderTarget(outEl, data, splitData) {
     <div class="chart-wrap"><div class="chart-title">${raceLabel} times for NYCM ~${time}</div><canvas id="hist-canvas" height="180"></canvas></div>
     <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="240"></canvas></div>
   </div>`;
+
+  const tgtCohort = `runners who finished NYCM near ${time}`;
+  html += vdotHtml(bucket, split, tgtCohort);
+  html += agHtml(bucket, split, tgtCohort);
 
   html += `<div class="reasoning">
     <strong>${bucket.n_cohort}</strong> runners finished NYCM within 5 minutes of <strong>${time}</strong>.
