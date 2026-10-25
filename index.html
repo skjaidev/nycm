@@ -834,9 +834,9 @@ function renderFitness(outEl, data) {
     <div class="chart-wrap"><div class="chart-title">NYCM finishes for AG% ${label}, ${ageLabel}</div><canvas id="hist-canvas" height="180"></canvas></div>
   </div>`;
 
-  const fitCohort = `runners whose best in-year AG% was in the ${label} range`;
-  html += vdotHtml(topBucket, null, fitCohort);
-  html += agHtml(topBucket, null, fitCohort);
+  const fitCohort = `runners whose best in-year AG% was in the ${label} range` + (ageGroup !== "any" ? `, age ${ageGroup}` : "");
+  html += vdotHtml(bucket, null, fitCohort);
+  html += agHtml(bucket, null, fitCohort);
 
   html += `<div class="reasoning">
     <strong>${bucket.n}</strong> runners (${ageLabel}) whose best in-year AG% fell in the <strong>${label}</strong> range finished NYCM with a median of <strong>${p50}</strong> (P25–P75: ${p25}–${p75}).
