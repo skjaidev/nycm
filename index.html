@@ -809,22 +809,22 @@ function renderFitness(outEl, data) {
     <div class="card-title">NYCM finish distribution · AG% ${label}, ${ageLabel} (${gender})<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners whose best age/gender-graded result (from any NYRR race 10M or longer this year) was in the ${label} range. Drawn from pooled 2016-2019, 2021, 2023-2025 NYCM fields.</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
-        <div class="pct-label">P25</div>
+        <div class="pct-label">P75</div>
         <div class="pct-val">${p25}</div>
         <div class="pct-sub">${fmtPace(bucket.p25_sec, MARATHON_DIST)}</div>
-        <div class="pct-sub">75% were slower</div>
+        <div class="pct-sub">faster than 75%</div>
       </div>
       <div class="pct-item">
         <div class="pct-label">P50</div>
         <div class="pct-val p50">${p50}</div>
         <div class="pct-sub">${fmtPace(bucket.p50_sec, MARATHON_DIST)}</div>
-        <div class="pct-sub">half were slower</div>
+        <div class="pct-sub">median</div>
       </div>
       <div class="pct-item">
-        <div class="pct-label">P75</div>
+        <div class="pct-label">P25</div>
         <div class="pct-val">${p75}</div>
         <div class="pct-sub">${fmtPace(bucket.p75_sec, MARATHON_DIST)}</div>
-        <div class="pct-sub">25% were slower</div>
+        <div class="pct-sub">faster than 25%</div>
       </div>
     </div>
     <div class="meta-line" style="margin-top:8px">N runners: ${bucket.n}</div>
@@ -839,7 +839,7 @@ function renderFitness(outEl, data) {
   html += agHtml(bucket, null, fitCohort);
 
   html += `<div class="reasoning">
-    <strong>${bucket.n}</strong> runners (${ageLabel}) whose best in-year AG% fell in the <strong>${label}</strong> range finished NYCM with a median of <strong>${p50}</strong> (P25–P75: ${p25}–${p75}).
+    <strong>${bucket.n}</strong> runners (${ageLabel}) whose best in-year AG% fell in the <strong>${label}</strong> range finished NYCM with a median of <strong>${p50}</strong> (range: ${p25}–${p75}).
     <br><br><span style="font-size:12px">Pooled across years 2016-2019, 2021, 2023-2025. AG% uses WMA 2023 age-grading factors applied to best NYRR race ≥10M in the marathon year.
     Race effort varies: a runner doing a hard tune-up half will show higher AG% than one doing an easy long run, which skews results toward runners who raced their indicator races.</span>
   </div>`;
@@ -874,25 +874,25 @@ function renderIndicator(outEl, data, splitData) {
   if (smallSample) html += `<div class="small-sample">Small sample (N=${bucket.n_nycm}) — percentiles may not be stable.</div>`;
 
   html += `<div class="card">
-    <div class="card-title">NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""} (${gender})<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners who raced this indicator in the selected window. P25/P50/P75 are the 25th, 50th, and 75th percentile finish times, half the group fell between P25 and P75.</span></i></div>
+    <div class="card-title">NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""} (${gender})<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners who raced this indicator in the selected window. P75/P50/P25 show times faster than 75%/50%/25% of the group.</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
-        <div class="pct-label">P25</div>
+        <div class="pct-label">P75</div>
         <div class="pct-val">${p25}</div>
         <div class="pct-sub">${fmtPace(bucket.p25_sec, MARATHON_DIST)}</div>
-        <div class="pct-sub">75% were slower</div>
+        <div class="pct-sub">faster than 75%</div>
       </div>
       <div class="pct-item">
         <div class="pct-label">P50</div>
         <div class="pct-val p50">${p50}</div>
         <div class="pct-sub">${fmtPace(bucket.p50_sec, MARATHON_DIST)}</div>
-        <div class="pct-sub">half were slower</div>
+        <div class="pct-sub">median</div>
       </div>
       <div class="pct-item">
-        <div class="pct-label">P75</div>
+        <div class="pct-label">P25</div>
         <div class="pct-val">${p75}</div>
         <div class="pct-sub">${fmtPace(bucket.p75_sec, MARATHON_DIST)}</div>
-        <div class="pct-sub">25% were slower</div>
+        <div class="pct-sub">faster than 25%</div>
       </div>
     </div>
     ${riegelPred ? `<div class="riegel-line">Riegel prediction: <span>${riegelPred}</span>${medErr != null ? ` · cohort ran <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median)` : ""}</div>` : ""}
@@ -911,7 +911,7 @@ function renderIndicator(outEl, data, splitData) {
   html += `<div class="reasoning">
     <strong>${bucket.n_indicator || "?"}</strong> runners finished ${raceLabel} between <strong>${bucket.lo}</strong> and <strong>${bucket.hi}</strong>.
     Of those, <strong>${bucket.n_nycm}</strong> (${bucket.pct_nycm ?? "—"}%) also ran NYCM that same year.
-    Their median finish was <strong>${p50}</strong> (P25–P75: ${p25}–${p75}).
+    Their median finish was <strong>${p50}</strong> (range: ${p25}–${p75}).
     ${riegelPred && absErr ? `Riegel predicts <strong>${riegelPred}</strong> from ${time}; the cohort ran <strong>${absErr}</strong> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median).` : ""}
     ${isWeak ? `<br><br>⚠ ${TIMING[race]} — treat as a wide-range estimate only.` : ""}
     ${smallSample ? `<br><br>⚠ Small sample (N=${bucket.n_nycm}); percentiles may not be stable.` : ""}
@@ -959,22 +959,22 @@ function renderTarget(outEl, data, splitData) {
   const medErr = raceData.riegel_median_error_sec;
 
   html += `<div class="card">
-    <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min (${gender})<i class="tip-icon">i<span class="tip-bubble">Indicator race times for runners who finished NYCM near your target. The bar shows the middle 50% of this cohort (P25 to P75).</span></i></div>
+    <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min (${gender})<i class="tip-icon">i<span class="tip-bubble">Indicator race times for runners who finished NYCM near your target. The bar shows the middle 50% of this cohort (P75 to P25).</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
-        <div class="pct-label">P25</div>
+        <div class="pct-label">P75</div>
         <div class="pct-val">${p25}</div>
-        <div class="pct-sub">75% were slower</div>
+        <div class="pct-sub">faster than 75%</div>
       </div>
       <div class="pct-item">
         <div class="pct-label">P50</div>
         <div class="pct-val p50">${p50}</div>
-        <div class="pct-sub">half were slower</div>
+        <div class="pct-sub">median</div>
       </div>
       <div class="pct-item">
-        <div class="pct-label">P75</div>
+        <div class="pct-label">P25</div>
         <div class="pct-val">${p75}</div>
-        <div class="pct-sub">25% were slower</div>
+        <div class="pct-sub">faster than 25%</div>
       </div>
     </div>
     ${medErr != null ? `<div class="riegel-line">Riegel median error: <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> (cohort ran ${medErr >= 0 ? "slower" : "faster"} than Riegel)</div>` : ""}
@@ -992,7 +992,7 @@ function renderTarget(outEl, data, splitData) {
   html += `<div class="reasoning">
     <strong>${bucket.n_cohort}</strong> runners finished NYCM within 5 minutes of <strong>${time}</strong>.
     Of those, <strong>${raceData.n_matched}</strong> (${raceData.pct_ran ?? "—"}%) also ran ${raceLabel} that same year.
-    Their ${raceLabel} times: P25 <strong>${p25}</strong> · P50 <strong>${p50}</strong> · P75 <strong>${p75}</strong>.
+    Their ${raceLabel} times: P75 <strong>${p25}</strong> · P50 <strong>${p50}</strong> · P25 <strong>${p75}</strong>.
     ${medErr != null ? `Riegel median error: ${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}.` : ""}
     ${isWeak ? `<br><br>⚠ ${TIMING[tgtRace]} — treat as a wide-range estimate.` : ""}
     <br><br><span style="font-size:12px">Pooled across years 2016-2019, 2021, 2023-2025. Same-year matches only.
