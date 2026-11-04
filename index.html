@@ -43,8 +43,23 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 .controls .tab-desc { flex-basis: 100%; margin-bottom: 4px; }
 .field { flex: 1; min-width: 0; }
 .field label { display: none; }
-.year-checks { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 4px 0; }
-.year-checks label { font-size: 13px; cursor: pointer; white-space: nowrap; color: var(--fg); font-weight: normal; display: inline-flex; align-items: center; gap: 3px; }
+.year-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 4px 0; }
+.year-checks { display: contents; }
+.year-btn, .year-toggle {
+  font-size: 11px; padding: 2px 9px; border-radius: 5px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--border); border-bottom: 2px solid color-mix(in srgb, var(--border) 150%, #000 20%);
+  background: var(--surface2); color: var(--muted);
+  box-shadow: 0 1px 2px rgba(0,0,0,.12);
+  transition: filter .1s;
+}
+.year-btn:hover, .year-toggle:hover { filter: brightness(1.08); color: var(--fg); }
+.year-btn:active, .year-toggle:active { transform: translateY(1px); border-bottom-width: 1px; box-shadow: none; }
+.year-toggle.active {
+  background: var(--accent,#2563eb); color: #fff;
+  border-color: color-mix(in srgb, var(--accent,#2563eb) 80%, #000 20%);
+  border-bottom-color: color-mix(in srgb, var(--accent,#2563eb) 60%, #000 40%);
+}
+.year-sep { width: 1px; height: 16px; background: var(--border); margin: 0 2px; }
 select { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; font-size: 14px; cursor: pointer; width: 100%; min-width: 0; }
 select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
@@ -137,8 +152,13 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
       <select id="ind-time" aria-label="Indicator time" onchange="scheduleUpdate()"></select>
     </div>
     <div class="field" style="flex-basis:100%">
-      <label style="display:inline;font-size:12px;color:var(--muted);margin-right:8px">Years</label>
-      <div class="year-checks" id="ind-years"></div>
+      <div class="year-row">
+        <span style="font-size:12px;color:var(--muted)">Years</span>
+        <button class="year-btn" onclick="setAllYears(true)">All</button>
+        <button class="year-btn" onclick="setAllYears(false)">Clear</button>
+        <div class="year-sep"></div>
+        <div class="year-checks" id="ind-years"></div>
+      </div>
     </div>
   </div>
 
@@ -158,8 +178,13 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
       <select id="tgt-time" aria-label="NYCM target time" onchange="scheduleUpdate()"></select>
     </div>
     <div class="field" style="flex-basis:100%">
-      <label style="display:inline;font-size:12px;color:var(--muted);margin-right:8px">Years</label>
-      <div class="year-checks" id="tgt-years"></div>
+      <div class="year-row">
+        <span style="font-size:12px;color:var(--muted)">Years</span>
+        <button class="year-btn" onclick="setAllYears(true)">All</button>
+        <button class="year-btn" onclick="setAllYears(false)">Clear</button>
+        <div class="year-sep"></div>
+        <div class="year-checks" id="tgt-years"></div>
+      </div>
     </div>
   </div>
 
@@ -194,6 +219,15 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
         <option value="65-69">65–69</option>
         <option value="70+">70+</option>
       </select>
+    </div>
+    <div class="field" style="flex-basis:100%">
+      <div class="year-row">
+        <span style="font-size:12px;color:var(--muted)">Years</span>
+        <button class="year-btn" onclick="setAllYears(true)">All</button>
+        <button class="year-btn" onclick="setAllYears(false)">Clear</button>
+        <div class="year-sep"></div>
+        <div class="year-checks" id="fit-years"></div>
+      </div>
     </div>
   </div>
 
@@ -358,21 +392,43 @@ function populateYearChecks(id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.innerHTML = YEARS.map(y =>
-    `<label><input type="checkbox" value="${y}" checked onchange="scheduleUpdate()"> ${y}</label>`
+    `<button class="year-btn year-toggle active" data-year="${y}" onclick="onYearToggle(this)">${y}</button>`
   ).join("");
+}
+
+const YEAR_CHECK_IDS = ["ind-years", "tgt-years", "fit-years"];
+
+function onYearToggle(btn) {
+  btn.classList.toggle("active");
+  const year = btn.dataset.year;
+  const isActive = btn.classList.contains("active");
+  const srcId = btn.closest(".year-checks").id;
+  YEAR_CHECK_IDS.filter(id => id !== srcId).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { const b = el.querySelector(`[data-year="${year}"]`); if (b) b.classList.toggle("active", isActive); }
+  });
+  scheduleUpdate();
+}
+
+function setAllYears(active) {
+  YEAR_CHECK_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.querySelectorAll(".year-toggle").forEach(b => b.classList.toggle("active", active));
+  });
+  scheduleUpdate();
 }
 
 function getSelectedYears(id) {
   const el = document.getElementById(id);
   if (!el) return null;
-  const inputs = [...el.querySelectorAll("input")];
-  const checked = inputs.filter(i => i.checked).map(i => +i.value);
-  return checked.length === inputs.length ? null : new Set(checked);
+  const btns = [...el.querySelectorAll(".year-toggle")];
+  const active = btns.filter(b => b.classList.contains("active")).map(b => +b.dataset.year);
+  return active.length === btns.length ? null : new Set(active);
 }
 
-function filterPairs(pairs, yearSet) {
+function filterPairs(pairs, yearSet, yearIdx = 2) {
   if (!yearSet || !pairs) return pairs || [];
-  return pairs.filter(p => p[2] == null || yearSet.has(p[2]));
+  return pairs.filter(p => p[yearIdx] == null || yearSet.has(p[yearIdx]));
 }
 
 function percFromSorted(arr, q) {
@@ -824,16 +880,32 @@ function renderFitness(outEl, data) {
     return;
   }
 
-  const bucket = (ageGroup !== "any" && topBucket.age_buckets?.[ageGroup]) || topBucket;
-  const ageLabel = ageGroup === "any" ? "all ages" : `age ${ageGroup}`;
+  const ageLabel  = ageGroup === "any" ? "all ages" : `age ${ageGroup}`;
   const noAgeData = ageGroup !== "any" && !topBucket.age_buckets?.[ageGroup];
 
-  const p25 = bucket.p25 || fmt(bucket.p25_sec);
-  const p50 = bucket.p50 || fmt(bucket.p50_sec);
-  const p75 = bucket.p75 || fmt(bucket.p75_sec);
+  // Year + age filtering from raw pairs when available
+  const yearSet = getSelectedYears("fit-years");
+  let p25, p50, p75, p25_sec, p50_sec, p75_sec, n;
+  const rawPairs = topBucket.pairs;
+  if (yearSet && rawPairs?.length) {
+    let fp = filterPairs(rawPairs, yearSet, 1); // fitness pairs: [nycm, year, age_bucket]
+    if (ageGroup !== "any") fp = fp.filter(p => p[2] === ageGroup);
+    const sorted = fp.map(p => p[0]).sort((a, b) => a - b);
+    p25_sec = sorted.length ? Math.round(percFromSorted(sorted, 0.25)) : null;
+    p50_sec = sorted.length ? Math.round(percFromSorted(sorted, 0.50)) : null;
+    p75_sec = sorted.length ? Math.round(percFromSorted(sorted, 0.75)) : null;
+    p25 = p25_sec ? fmt(p25_sec) : "—"; p50 = p50_sec ? fmt(p50_sec) : "—"; p75 = p75_sec ? fmt(p75_sec) : "—";
+    n = sorted.length;
+  } else {
+    const bucket = (ageGroup !== "any" && topBucket.age_buckets?.[ageGroup]) || topBucket;
+    p25 = bucket.p25 || fmt(bucket.p25_sec); p50 = bucket.p50 || fmt(bucket.p50_sec); p75 = bucket.p75 || fmt(bucket.p75_sec);
+    p25_sec = bucket.p25_sec; p50_sec = bucket.p50_sec; p75_sec = bucket.p75_sec;
+    n = bucket.n;
+  }
+  const bucket = (ageGroup !== "any" && topBucket.age_buckets?.[ageGroup]) || topBucket;
 
   let html = "";
-  if (noAgeData) {
+  if (noAgeData && !yearSet) {
     html += `<div class="small-sample">No data for age group ${ageGroup} in this AG% bin.</div>`;
     outEl.innerHTML = html;
     return;
@@ -841,8 +913,8 @@ function renderFitness(outEl, data) {
   if (ageGroup === "any") {
     html += `<div class="weak-warn">Showing all ages. The indicator-to-marathon conversion varies by age group. Select an age group for a tighter estimate.</div>`;
   }
-  if (bucket.small_sample) {
-    html += `<div class="small-sample">Small sample (N=${bucket.n}). Percentiles may not be stable.</div>`;
+  if (n < 15) {
+    html += `<div class="small-sample">Small sample (N=${n}). Percentiles may not be stable.</div>`;
   }
 
   html += `<div class="card">
@@ -851,23 +923,23 @@ function renderFitness(outEl, data) {
       <div class="pct-item">
         <div class="pct-label">P75</div>
         <div class="pct-val">${p25}</div>
-        <div class="pct-sub">${fmtPace(bucket.p25_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">${fmtPace(p25_sec, MARATHON_DIST)}</div>
         <div class="pct-sub">faster than 75%</div>
       </div>
       <div class="pct-item">
         <div class="pct-label">P50</div>
         <div class="pct-val p50">${p50}</div>
-        <div class="pct-sub">${fmtPace(bucket.p50_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">${fmtPace(p50_sec, MARATHON_DIST)}</div>
         <div class="pct-sub">median</div>
       </div>
       <div class="pct-item">
         <div class="pct-label">P25</div>
         <div class="pct-val">${p75}</div>
-        <div class="pct-sub">${fmtPace(bucket.p75_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">${fmtPace(p75_sec, MARATHON_DIST)}</div>
         <div class="pct-sub">faster than 25%</div>
       </div>
     </div>
-    <div class="meta-line" style="margin-top:8px">N runners: ${bucket.n}</div>
+    <div class="meta-line" style="margin-top:8px">N runners: ${n}</div>
   </div>`;
 
   html += `<div class="charts">
@@ -879,13 +951,20 @@ function renderFitness(outEl, data) {
   html += agHtml(bucket, null, fitCohort);
 
   html += `<div class="reasoning">
-    <strong>${bucket.n}</strong> runners (${ageLabel}) whose best in-year AG% fell in the <strong>${label}</strong> range finished NYCM with a median of <strong>${p50}</strong> (range: ${p25}–${p75}).
+    <strong>${n}</strong> runners (${ageLabel}) whose best in-year AG% fell in the <strong>${label}</strong> range finished NYCM with a median of <strong>${p50}</strong> (range: ${p25}–${p75}).
     <br><br><span style="font-size:12px">Pooled across years 2016-2019, 2021, 2023-2025. AG% uses WMA 2023 age-grading factors applied to best NYRR race ≥10M in the marathon year.
     Race effort varies: a runner doing a hard tune-up half will show higher AG% than one doing an easy long run, which skews results toward runners who raced their indicator races.</span>
   </div>`;
 
   outEl.innerHTML = html;
-  if (bucket.histogram?.length) renderHistogram("hist-canvas", bucket.histogram, "#2563eb");
+  if (yearSet && rawPairs?.length) {
+    let fp = filterPairs(rawPairs, yearSet, 1);
+    if (ageGroup !== "any") fp = fp.filter(p => p[2] === ageGroup);
+    const nycmTimes = fp.map(p => p[0]).sort((a, b) => a - b);
+    if (nycmTimes.length) renderHistogram("hist-canvas", buildHistogram(nycmTimes, 150), "#2563eb");
+  } else if (bucket.histogram?.length) {
+    renderHistogram("hist-canvas", bucket.histogram, "#2563eb");
+  }
 }
 
 function renderIndicator(outEl, data, splitData) {
@@ -924,7 +1003,6 @@ function renderIndicator(outEl, data, splitData) {
 
   let html = "";
   if (isWeak)      html += `<div class="weak-warn">⚠ Weak indicator — ${TIMING[race]}. Fitness likely changed. Treat as a wide estimate.</div>`;
-  if (yearSet)     html += `<div class="small-sample" style="background:var(--surface2)">Filtered to ${[...yearSet].sort().join(", ")} — N=${n_nycm}.</div>`;
   if (smallSample) html += `<div class="small-sample">Small sample (N=${n_nycm}) — percentiles may not be stable.</div>`;
 
   html += `<div class="card">
@@ -1022,7 +1100,6 @@ function renderTarget(outEl, data, splitData) {
   }
   const medErr      = raceData.riegel_median_error_sec;
   const smallSample = n_matched < 15;
-  if (yearSet)     html += `<div class="small-sample" style="background:var(--surface2)">Filtered to ${[...yearSet].sort().join(", ")} — N=${n_matched}.</div>`;
   if (smallSample) html += `<div class="small-sample">Small sample (N=${n_matched}).</div>`;
 
   html += `<div class="card">
@@ -1077,6 +1154,7 @@ function renderTarget(outEl, data, splitData) {
 (function init() {
   populateYearChecks("ind-years");
   populateYearChecks("tgt-years");
+  populateYearChecks("fit-years");
   populateIndTime("bronx_10m");
   populateTgtTime();
   populateFitAg();
