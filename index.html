@@ -368,6 +368,9 @@ const TIMING = {
   brooklyn_half: "~6 months before NYCM (May)",
 };
 const MARATHON_DIST = 26.2188;
+const RACE_DIST = {
+  bronx_10m: 10.0, si_half: 13.109, nyc_half: 13.109, brooklyn_half: 13.109,
+};
 
 const FWD_CENTERS = [
   "2:40:00","2:45:00","2:50:00","2:55:00","3:00:00","3:05:00",
@@ -1054,7 +1057,13 @@ function renderIndicator(outEl, data, splitData) {
   if (smallSample) html += `<div class="small-sample">Small sample (N=${n_nycm}) — percentiles may not be stable.</div>`;
 
   html += `<div class="card">
-    <div class="card-title">NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""} (${gender})<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners who raced this indicator in the selected window. P75/P50/P25 show times faster than 75%/50%/25% of the group.</span></i></div>
+    <div class="card-title">${(() => {
+      const d = RACE_DIST[race];
+      const pLo = d ? fmtPace(toSec(bucket.lo), d) : null;
+      const pHi = d ? fmtPace(toSec(bucket.hi), d) : null;
+      const paceStr = pLo && pHi ? ` (${pHi}–${pLo})` : "";
+      return `NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""}${paceStr} (${gender})`;
+    })()}<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners who raced this indicator in the selected window. P75/P50/P25 show times faster than 75%/50%/25% of the group.</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
         <div class="pct-label">P75</div>
@@ -1155,7 +1164,13 @@ function renderTarget(outEl, data, splitData) {
   if (smallSample) html += `<div class="small-sample">Small sample (N=${n_matched}).</div>`;
 
   html += `<div class="card">
-    <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min (${gender})<i class="tip-icon">i<span class="tip-bubble">Indicator race times for runners who finished NYCM near your target. The bar shows the middle 50% of this cohort (P75 to P25).</span></i></div>
+    <div class="card-title">${(() => {
+      const d = RACE_DIST[tgtRace];
+      const paceRange = d && p25 !== "—" && p75 !== "—"
+        ? ` (${fmtPace(toSec(p25), d)}–${fmtPace(toSec(p75), d)})`
+        : "";
+      return `${raceLabel} times${paceRange} · runners who finished NYCM ~${time} ±5 min (${gender})`;
+    })()}<i class="tip-icon">i<span class="tip-bubble">Indicator race times for runners who finished NYCM near your target. The bar shows the middle 50% of this cohort (P75 to P25).</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
         <div class="pct-label">P75</div>
