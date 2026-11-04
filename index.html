@@ -388,12 +388,19 @@ const FITNESS_LABELS  = {
 
 const YEARS = [2016, 2017, 2018, 2019, 2021, 2022, 2023, 2024, 2025, 2026];
 
+const YEAR_NOTES = {
+  2022: "Excluded by default: unseasonably warm weather on race day skewed finish times"
+};
+
 function populateYearChecks(id) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.innerHTML = YEARS.map(y =>
-    `<button class="year-btn year-toggle active" data-year="${y}" onclick="onYearToggle(this)">${y}</button>`
-  ).join("");
+  el.innerHTML = YEARS.map(y => {
+    const note = YEAR_NOTES[y];
+    const active = note ? "" : " active";
+    const title = note ? ` title="${note}"` : "";
+    return `<button class="year-btn year-toggle${active}" data-year="${y}" onclick="onYearToggle(this)"${title}>${y}</button>`;
+  }).join("");
 }
 
 const YEAR_CHECK_IDS = ["ind-years", "tgt-years", "fit-years"];
