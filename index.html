@@ -1164,30 +1164,31 @@ function renderTarget(outEl, data, splitData) {
   if (smallSample) html += `<div class="small-sample">Small sample (N=${n_matched}).</div>`;
 
   html += `<div class="card">
-    <div class="card-title">${(() => {
-      const d = RACE_DIST[tgtRace];
-      const paceRange = d && p25 !== "—" && p75 !== "—"
-        ? ` (${fmtPace(toSec(p25), d)}–${fmtPace(toSec(p75), d)})`
-        : "";
-      return `${raceLabel} times${paceRange} · runners who finished NYCM ~${time} ±5 min (${gender})`;
-    })()}<i class="tip-icon">i<span class="tip-bubble">Indicator race times for runners who finished NYCM near your target. The bar shows the middle 50% of this cohort (P75 to P25).</span></i></div>
+    <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min (${gender})<i class="tip-icon">i<span class="tip-bubble">Indicator race times for runners who finished NYCM near your target. The bar shows the middle 50% of this cohort (P75 to P25).</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
         <div class="pct-label">P75</div>
         <div class="pct-val">${p25}</div>
         <div class="pct-sub">faster than 75%</div>
+        ${(() => { const d = RACE_DIST[tgtRace]; const s = toSec(p25); return d && s ? `<div class="pct-sub">${fmtPace(s, d)}</div>` : ""; })()}
       </div>
       <div class="pct-item">
         <div class="pct-label">P50</div>
         <div class="pct-val p50">${p50}</div>
         <div class="pct-sub">median</div>
+        ${(() => { const d = RACE_DIST[tgtRace]; const s = toSec(p50); return d && s ? `<div class="pct-sub">${fmtPace(s, d)}</div>` : ""; })()}
       </div>
       <div class="pct-item">
         <div class="pct-label">P25</div>
         <div class="pct-val">${p75}</div>
         <div class="pct-sub">faster than 25%</div>
+        ${(() => { const d = RACE_DIST[tgtRace]; const s = toSec(p75); return d && s ? `<div class="pct-sub">${fmtPace(s, d)}</div>` : ""; })()}
       </div>
     </div>
+    ${(() => {
+      const tSec = toSec(time), lo = tSec - 300, hi = tSec + 300;
+      return `<div class="meta-line">Marathon target pace: ${fmtPace(lo, MARATHON_DIST)}–${fmtPace(hi, MARATHON_DIST)}</div>`;
+    })()}
     ${medErr != null ? `<div class="riegel-line">Riegel median error: <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> (cohort ran ${medErr >= 0 ? "slower" : "faster"} than Riegel)</div>` : ""}
     <div class="meta-line" style="margin-top:8px">${(() => {
       if (!yearSet) return `N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${n_matched} (${raceData.pct_ran ?? "—"}%)`;
