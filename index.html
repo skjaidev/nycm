@@ -386,7 +386,7 @@ const FITNESS_LABELS  = {
   "76.25": "75–77.5%", "78.75": "77.5–80%",
 };
 
-const YEARS = [2016, 2017, 2018, 2019, 2021, 2023, 2024, 2025];
+const YEARS = [2016, 2017, 2018, 2019, 2021, 2022, 2023, 2024, 2025, 2026];
 
 function populateYearChecks(id) {
   const el = document.getElementById(id);
@@ -1028,7 +1028,11 @@ function renderIndicator(outEl, data, splitData) {
       </div>
     </div>
     ${riegelPred ? `<div class="riegel-line">Riegel prediction: <span>${riegelPred}</span>${medErr != null ? ` · cohort ran <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median)` : ""}</div>` : ""}
-    <div class="meta-line" style="margin-top:8px">N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${n_nycm}${yearSet ? "" : ` (${bucket.pct_nycm ?? "—"}%)`}</div>
+    <div class="meta-line" style="margin-top:8px">${(() => {
+      if (!yearSet) return `N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${n_nycm} (${bucket.pct_nycm ?? "—"}%)`;
+      const nInd = [...yearSet].reduce((s, yr) => s + (bucket.n_indicator_by_year?.[yr] || 0), 0);
+      return `N indicator cohort: ${nInd || "—"} · N same-year NYCM: ${n_nycm}`;
+    })()}</div>
   </div>`;
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">NYCM finishes</div><canvas id="hist-canvas" height="180"></canvas></div>
@@ -1122,7 +1126,11 @@ function renderTarget(outEl, data, splitData) {
       </div>
     </div>
     ${medErr != null ? `<div class="riegel-line">Riegel median error: <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> (cohort ran ${medErr >= 0 ? "slower" : "faster"} than Riegel)</div>` : ""}
-    <div class="meta-line" style="margin-top:8px">N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${n_matched}${yearSet ? "" : ` (${raceData.pct_ran ?? "—"}%)`}</div>
+    <div class="meta-line" style="margin-top:8px">${(() => {
+      if (!yearSet) return `N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${n_matched} (${raceData.pct_ran ?? "—"}%)`;
+      const nCohort = [...yearSet].reduce((s, yr) => s + (bucket.n_cohort_by_year?.[yr] || 0), 0);
+      return `N NYCM cohort: ${nCohort || "—"} · N ran ${raceLabel}: ${n_matched}`;
+    })()}</div>
   </div>`;
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">${raceLabel} times for NYCM ~${time}</div><canvas id="hist-canvas" height="180"></canvas></div>
