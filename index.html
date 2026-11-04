@@ -43,6 +43,8 @@ h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
 .controls .tab-desc { flex-basis: 100%; margin-bottom: 4px; }
 .field { flex: 1; min-width: 0; }
 .field label { display: none; }
+.year-checks { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 4px 0; }
+.year-checks label { font-size: 13px; cursor: pointer; white-space: nowrap; color: var(--fg); font-weight: normal; display: inline-flex; align-items: center; gap: 3px; }
 select { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; font-size: 14px; cursor: pointer; width: 100%; min-width: 0; }
 select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
@@ -134,6 +136,10 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
       <label>Indicator time</label>
       <select id="ind-time" aria-label="Indicator time" onchange="scheduleUpdate()"></select>
     </div>
+    <div class="field" style="flex-basis:100%">
+      <label style="display:inline;font-size:12px;color:var(--muted);margin-right:8px">Years</label>
+      <div class="year-checks" id="ind-years"></div>
+    </div>
   </div>
 
   <!-- Target controls: given a NYCM target, what did people run in indicator races? -->
@@ -150,6 +156,10 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
     <div class="field">
       <label>NYCM target</label>
       <select id="tgt-time" aria-label="NYCM target time" onchange="scheduleUpdate()"></select>
+    </div>
+    <div class="field" style="flex-basis:100%">
+      <label style="display:inline;font-size:12px;color:var(--muted);margin-right:8px">Years</label>
+      <div class="year-checks" id="tgt-years"></div>
     </div>
   </div>
 
@@ -341,6 +351,36 @@ const FITNESS_LABELS  = {
   "66.25": "65–67.5%", "68.75": "67.5–70%", "71.25": "70–72.5%", "73.75": "72.5–75%",
   "76.25": "75–77.5%", "78.75": "77.5–80%",
 };
+
+const YEARS = [2016, 2017, 2018, 2019, 2021, 2023, 2024, 2025];
+
+function populateYearChecks(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = YEARS.map(y =>
+    `<label><input type="checkbox" value="${y}" checked onchange="scheduleUpdate()"> ${y}</label>`
+  ).join("");
+}
+
+function getSelectedYears(id) {
+  const el = document.getElementById(id);
+  if (!el) return null;
+  const inputs = [...el.querySelectorAll("input")];
+  const checked = inputs.filter(i => i.checked).map(i => +i.value);
+  return checked.length === inputs.length ? null : new Set(checked);
+}
+
+function filterPairs(pairs, yearSet) {
+  if (!yearSet || !pairs) return pairs || [];
+  return pairs.filter(p => p[2] == null || yearSet.has(p[2]));
+}
+
+function percFromSorted(arr, q) {
+  if (!arr.length) return null;
+  const i = q * (arr.length - 1);
+  const lo = Math.floor(i), hi = Math.ceil(i);
+  return arr[lo] + (arr[hi] - arr[lo]) * (i - lo);
+}
 
 // ── State ─────────────────────────────────────────────────────────────────
 let mode    = "target";
@@ -860,18 +900,32 @@ function renderIndicator(outEl, data, splitData) {
     return;
   }
 
-  const isWeak      = WEAK.has(race);
-  const smallSample = bucket.small_sample || bucket.n_nycm < 15;
-  const raceLabel   = RACE_LABELS[race];
-  const p25 = bucket.p25 || fmt(bucket.p25_sec);
-  const p50 = bucket.p50 || fmt(bucket.p50_sec);
-  const p75 = bucket.p75 || fmt(bucket.p75_sec);
+  const isWeak   = WEAK.has(race);
+  const raceLabel = RACE_LABELS[race];
   const riegelPred = bucket.riegel_predicted || (bucket.riegel_predicted_sec ? fmt(bucket.riegel_predicted_sec) : null);
   const medErr     = bucket.riegel_median_error_sec;
 
+  const yearSet  = getSelectedYears("ind-years");
+  const fpairs   = filterPairs(bucket.pairs, yearSet);
+  let p25, p50, p75, p25_sec, p50_sec, p75_sec, n_nycm;
+  if (yearSet) {
+    const nycmSorted = fpairs.map(p => p[1]).sort((a,b) => a-b);
+    p25_sec = nycmSorted.length ? Math.round(percFromSorted(nycmSorted, 0.25)) : null;
+    p50_sec = nycmSorted.length ? Math.round(percFromSorted(nycmSorted, 0.50)) : null;
+    p75_sec = nycmSorted.length ? Math.round(percFromSorted(nycmSorted, 0.75)) : null;
+    p25 = p25_sec ? fmt(p25_sec) : "—"; p50 = p50_sec ? fmt(p50_sec) : "—"; p75 = p75_sec ? fmt(p75_sec) : "—";
+    n_nycm = fpairs.length;
+  } else {
+    p25 = bucket.p25 || fmt(bucket.p25_sec); p50 = bucket.p50 || fmt(bucket.p50_sec); p75 = bucket.p75 || fmt(bucket.p75_sec);
+    p25_sec = bucket.p25_sec; p50_sec = bucket.p50_sec; p75_sec = bucket.p75_sec;
+    n_nycm = bucket.n_nycm;
+  }
+  const smallSample = n_nycm < 15;
+
   let html = "";
   if (isWeak)      html += `<div class="weak-warn">⚠ Weak indicator — ${TIMING[race]}. Fitness likely changed. Treat as a wide estimate.</div>`;
-  if (smallSample) html += `<div class="small-sample">Small sample (N=${bucket.n_nycm}) — percentiles may not be stable.</div>`;
+  if (yearSet)     html += `<div class="small-sample" style="background:var(--surface2)">Filtered to ${[...yearSet].sort().join(", ")} — N=${n_nycm}.</div>`;
+  if (smallSample) html += `<div class="small-sample">Small sample (N=${n_nycm}) — percentiles may not be stable.</div>`;
 
   html += `<div class="card">
     <div class="card-title">NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""} (${gender})<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners who raced this indicator in the selected window. P75/P50/P25 show times faster than 75%/50%/25% of the group.</span></i></div>
@@ -879,24 +933,24 @@ function renderIndicator(outEl, data, splitData) {
       <div class="pct-item">
         <div class="pct-label">P75</div>
         <div class="pct-val">${p25}</div>
-        <div class="pct-sub">${fmtPace(bucket.p25_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">${fmtPace(p25_sec, MARATHON_DIST)}</div>
         <div class="pct-sub">faster than 75%</div>
       </div>
       <div class="pct-item">
         <div class="pct-label">P50</div>
         <div class="pct-val p50">${p50}</div>
-        <div class="pct-sub">${fmtPace(bucket.p50_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">${fmtPace(p50_sec, MARATHON_DIST)}</div>
         <div class="pct-sub">median</div>
       </div>
       <div class="pct-item">
         <div class="pct-label">P25</div>
         <div class="pct-val">${p75}</div>
-        <div class="pct-sub">${fmtPace(bucket.p75_sec, MARATHON_DIST)}</div>
+        <div class="pct-sub">${fmtPace(p75_sec, MARATHON_DIST)}</div>
         <div class="pct-sub">faster than 25%</div>
       </div>
     </div>
     ${riegelPred ? `<div class="riegel-line">Riegel prediction: <span>${riegelPred}</span>${medErr != null ? ` · cohort ran <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median)` : ""}</div>` : ""}
-    <div class="meta-line" style="margin-top:8px">N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${bucket.n_nycm} (${bucket.pct_nycm ?? "—"}%)</div>
+    <div class="meta-line" style="margin-top:8px">N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${n_nycm}${yearSet ? "" : ` (${bucket.pct_nycm ?? "—"}%)`}</div>
   </div>`;
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">NYCM finishes</div><canvas id="hist-canvas" height="180"></canvas></div>
@@ -921,9 +975,9 @@ function renderIndicator(outEl, data, splitData) {
   </div>`;
 
   outEl.innerHTML = html;
-  const nycmTimes = (bucket.pairs || []).map(p => p[1]).sort((a,b) => a-b);
+  const nycmTimes = fpairs.map(p => p[1]).sort((a,b) => a-b);
   if (nycmTimes.length) renderHistogram("hist-canvas", buildHistogram(nycmTimes, 150), "#2563eb");
-  if (bucket.pairs?.length) renderScatter("scatter-canvas", bucket.pairs, raceLabel);
+  if (fpairs.length) renderScatter("scatter-canvas", fpairs, raceLabel);
 }
 
 function renderTarget(outEl, data, splitData) {
@@ -950,13 +1004,26 @@ function renderTarget(outEl, data, splitData) {
     return;
   }
 
-  const smallSample = raceData.n_matched < 15;
-  if (smallSample) html += `<div class="small-sample">Small sample (N=${raceData.n_matched}).</div>`;
-
-  const p25    = raceData.p25 || fmt(raceData.p25_sec);
-  const p50    = raceData.p50 || fmt(raceData.p50_sec);
-  const p75    = raceData.p75 || fmt(raceData.p75_sec);
-  const medErr = raceData.riegel_median_error_sec;
+  const yearSet  = getSelectedYears("tgt-years");
+  const fpairs   = filterPairs(raceData.pairs, yearSet);
+  let p25, p50, p75, n_matched;
+  if (yearSet) {
+    const indSorted = fpairs.map(p => p[0]).sort((a,b) => a-b);
+    const p25s = indSorted.length ? Math.round(percFromSorted(indSorted, 0.25)) : null;
+    const p50s = indSorted.length ? Math.round(percFromSorted(indSorted, 0.50)) : null;
+    const p75s = indSorted.length ? Math.round(percFromSorted(indSorted, 0.75)) : null;
+    p25 = p25s ? fmt(p25s) : "—"; p50 = p50s ? fmt(p50s) : "—"; p75 = p75s ? fmt(p75s) : "—";
+    n_matched = fpairs.length;
+  } else {
+    p25 = raceData.p25 || fmt(raceData.p25_sec);
+    p50 = raceData.p50 || fmt(raceData.p50_sec);
+    p75 = raceData.p75 || fmt(raceData.p75_sec);
+    n_matched = raceData.n_matched;
+  }
+  const medErr      = raceData.riegel_median_error_sec;
+  const smallSample = n_matched < 15;
+  if (yearSet)     html += `<div class="small-sample" style="background:var(--surface2)">Filtered to ${[...yearSet].sort().join(", ")} — N=${n_matched}.</div>`;
+  if (smallSample) html += `<div class="small-sample">Small sample (N=${n_matched}).</div>`;
 
   html += `<div class="card">
     <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min (${gender})<i class="tip-icon">i<span class="tip-bubble">Indicator race times for runners who finished NYCM near your target. The bar shows the middle 50% of this cohort (P75 to P25).</span></i></div>
@@ -978,7 +1045,7 @@ function renderTarget(outEl, data, splitData) {
       </div>
     </div>
     ${medErr != null ? `<div class="riegel-line">Riegel median error: <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> (cohort ran ${medErr >= 0 ? "slower" : "faster"} than Riegel)</div>` : ""}
-    <div class="meta-line" style="margin-top:8px">N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${raceData.n_matched} (${raceData.pct_ran ?? "—"}%)</div>
+    <div class="meta-line" style="margin-top:8px">N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${n_matched}${yearSet ? "" : ` (${raceData.pct_ran ?? "—"}%)`}</div>
   </div>`;
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">${raceLabel} times for NYCM ~${time}</div><canvas id="hist-canvas" height="180"></canvas></div>
@@ -991,7 +1058,7 @@ function renderTarget(outEl, data, splitData) {
 
   html += `<div class="reasoning">
     <strong>${bucket.n_cohort}</strong> runners finished NYCM within 5 minutes of <strong>${time}</strong>.
-    Of those, <strong>${raceData.n_matched}</strong> (${raceData.pct_ran ?? "—"}%) also ran ${raceLabel} that same year.
+    Of those, <strong>${n_matched}</strong>${yearSet ? "" : ` (${raceData.pct_ran ?? "—"}%)`} also ran ${raceLabel} that same year.
     Their ${raceLabel} times: P75 <strong>${p25}</strong> · P50 <strong>${p50}</strong> · P25 <strong>${p75}</strong>.
     ${medErr != null ? `Riegel median error: ${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}.` : ""}
     ${isWeak ? `<br><br>⚠ ${TIMING[tgtRace]} — treat as a wide-range estimate.` : ""}
@@ -1001,13 +1068,15 @@ function renderTarget(outEl, data, splitData) {
   </div>`;
 
   outEl.innerHTML = html;
-  const indTimes = (raceData.pairs || []).map(p => p[0]).sort((a,b) => a-b);
+  const indTimes = fpairs.map(p => p[0]).sort((a,b) => a-b);
   if (indTimes.length) renderHistogram("hist-canvas", buildHistogram(indTimes, 150), "#059669");
-  if (raceData.pairs?.length) renderScatter("scatter-canvas", raceData.pairs, raceLabel);
+  if (fpairs.length) renderScatter("scatter-canvas", fpairs, raceLabel);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
 (function init() {
+  populateYearChecks("ind-years");
+  populateYearChecks("tgt-years");
   populateIndTime("bronx_10m");
   populateTgtTime();
   populateFitAg();
