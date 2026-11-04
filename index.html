@@ -576,12 +576,11 @@ function scheduleUpdate(immediate) {
 const DEFAULT_YEARS = new Set(YEARS.filter(y => !YEAR_NOTES[y]));
 
 function _yearsParam() {
-  const active = getSelectedYears("ind-years"); // null = all selected
-  if (!active) return ""; // all on = matches default? only if default is all-on
-  // compare active set to DEFAULT_YEARS
-  const isDefault = active.size === DEFAULT_YEARS.size && [...active].every(y => DEFAULT_YEARS.has(y));
+  const active = getSelectedYears("ind-years"); // null means every toggle is on
+  const activeSet = active || new Set(YEARS);
+  const isDefault = activeSet.size === DEFAULT_YEARS.size && [...activeSet].every(y => DEFAULT_YEARS.has(y));
   if (isDefault) return "";
-  return "&years=" + [...active].sort((a,b) => a-b).join(",");
+  return "&years=" + [...activeSet].sort((a,b) => a-b).join(",");
 }
 
 function _applyYearsParam(qp) {
