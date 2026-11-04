@@ -578,7 +578,7 @@ function currentPath() {
     const race   = document.getElementById("ind-race").value;
     const time   = document.getElementById("ind-time").value;
     const gender = document.getElementById("ind-gender").value;
-    return `/indicator/${RACE_SLUG[race]}/${toSec(time)}?gender=${gender}`;
+    return `/indicator/${RACE_SLUG[race]}/${time}?gender=${gender}`;
   } else if (mode === "fitness") {
     const ag       = document.getElementById("fit-ag").value;
     const gender   = document.getElementById("fit-gender").value;
@@ -587,30 +587,43 @@ function currentPath() {
   } else {
     const time   = document.getElementById("tgt-time").value;
     const gender = document.getElementById("tgt-gender").value;
-    return `/target/nycm/${toSec(time)}?gender=${gender}`;
+    return `/target/nycm/${time}?gender=${gender}`;
   }
+}
+
+function _parseTimeSec(s) {
+  // accepts hh:mm:ss (new) or bare integer seconds (legacy)
+  if (!s) return null;
+  if (s.includes(":")) { const sec = toSec(s); return sec > 0 ? sec : null; }
+  const n = parseInt(s, 10);
+  return isFinite(n) && n > 0 ? n : null;
 }
 
 function applyPermalink(path, search) {
   const parts  = path.replace(/^\//, "").split("/");
-  const gender = new URLSearchParams(search).get("gender") || "any";
+  const qp     = new URLSearchParams(search);
+  const VALID_GENDERS = new Set(["M", "F", "any"]);
+  const VALID_AGES    = new Set(["any","18-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70+"]);
+  const gender   = VALID_GENDERS.has(qp.get("gender")) ? qp.get("gender") : "any";
 
   if (parts[0] === "indicator" && parts[1] && parts[2]) {
     const race = SLUG_RACE[parts[1]];
     if (!race) return false;
-    const sec  = parseInt(parts[2], 10);
+    const sec = _parseTimeSec(parts[2]);
+    if (!sec) return false;
     mode = "indicator";
     document.getElementById("ind-race").value   = race;
     document.getElementById("ind-gender").value = gender;
     populateIndTime(race, findClosest(indCenters(race), sec));
   } else if (parts[0] === "fitness" && parts[1]) {
-    const ageGroup = new URLSearchParams(search).get("age") || "any";
+    const ageGroup = VALID_AGES.has(qp.get("age")) ? qp.get("age") : "any";
     mode = "fitness";
     document.getElementById("fit-gender").value = gender;
     document.getElementById("fit-age").value    = ageGroup;
     populateFitAg(parts[1]);
   } else if (parts[0] === "target" && parts[2]) {
-    const sec = parseInt(parts[2], 10);
+    const sec = _parseTimeSec(parts[2]);
+    if (!sec) return false;
     mode = "target";
     document.getElementById("tgt-gender").value = gender;
     populateTgtTime(findClosest(FWD_CENTERS, sec));
