@@ -573,21 +573,47 @@ function scheduleUpdate(immediate) {
 }
 
 // ── Permalink ─────────────────────────────────────────────────────────────
+const DEFAULT_YEARS = new Set(YEARS.filter(y => !YEAR_NOTES[y]));
+
+function _yearsParam() {
+  const active = getSelectedYears("ind-years"); // null = all selected
+  if (!active) return ""; // all on = matches default? only if default is all-on
+  // compare active set to DEFAULT_YEARS
+  const isDefault = active.size === DEFAULT_YEARS.size && [...active].every(y => DEFAULT_YEARS.has(y));
+  if (isDefault) return "";
+  return "&years=" + [...active].sort((a,b) => a-b).join(",");
+}
+
+function _applyYearsParam(qp) {
+  const raw = qp.get("years");
+  if (!raw) return; // absent = default
+  const selected = new Set(raw.split(",").map(Number).filter(y => YEARS.includes(y)));
+  if (!selected.size) return;
+  YEAR_CHECK_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.querySelectorAll(".year-toggle").forEach(b => {
+      b.classList.toggle("active", selected.has(+b.dataset.year));
+    });
+  });
+}
+
 function currentPath() {
+  const yp = _yearsParam();
   if (mode === "indicator") {
     const race   = document.getElementById("ind-race").value;
     const time   = document.getElementById("ind-time").value;
     const gender = document.getElementById("ind-gender").value;
-    return `/indicator/${RACE_SLUG[race]}/${time}?gender=${gender}`;
+    return `/indicator/${RACE_SLUG[race]}/${time}?gender=${gender}${yp}`;
   } else if (mode === "fitness") {
     const ag       = document.getElementById("fit-ag").value;
     const gender   = document.getElementById("fit-gender").value;
     const ageGroup = document.getElementById("fit-age").value;
-    return `/fitness/${ag}?gender=${gender}&age=${ageGroup}`;
+    return `/fitness/${ag}?gender=${gender}&age=${ageGroup}${yp}`;
   } else {
     const time   = document.getElementById("tgt-time").value;
     const gender = document.getElementById("tgt-gender").value;
-    return `/target/${time}?gender=${gender}`;
+    return `/target/${time}?gender=${gender}${yp}`;
   }
 }
 
@@ -640,6 +666,7 @@ function applyPermalink(path, search) {
   document.getElementById("ctrl-target").classList.toggle("hidden", mode !== "target");
   document.getElementById("ctrl-fitness").classList.toggle("hidden", mode !== "fitness");
   document.getElementById("tgt-race-tabs").classList.toggle("hidden", mode !== "target");
+  _applyYearsParam(qp);
   return true;
 }
 
