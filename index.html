@@ -129,7 +129,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   <!-- Indicator controls: given a race time, what NYCM do people run? -->
   <div id="ctrl-indicator" class="controls hidden">
-    <p class="tab-desc">Enter a recent indicator race time to see how runners with that time have finished NYCM.</p>
+    <p class="tab-desc">Enter an indicator race time to see how runners with that time finished NYCM that same year.</p>
     <div class="field">
       <label>Gender</label>
       <select id="ind-gender" aria-label="Gender" onchange="scheduleUpdate()">
@@ -164,7 +164,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   <!-- Target controls: given a NYCM target, what did people run in indicator races? -->
   <div id="ctrl-target" class="controls">
-    <p class="tab-desc">Enter a NYCM goal time to see what indicator race times runners in that finishing group have run.</p>
+    <p class="tab-desc">Enter a NYCM goal time to see what indicator race times runners who finished that time ran that same year.</p>
     <div class="field">
       <label>Gender</label>
       <select id="tgt-gender" aria-label="Gender" onchange="scheduleUpdate()">
@@ -190,7 +190,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   <!-- Fitness controls: given best in-year AG%, what NYCM? -->
   <div id="ctrl-fitness" class="controls hidden">
-    <p class="tab-desc">Enter your best age/gender-graded % from a race 10M or longer this year to see how similarly-fit runners have finished NYCM.</p>
+    <p class="tab-desc">Enter your best age/gender-graded % from a race 10M or longer in a NYCM year to see how other runners at that fitness level finished that year's marathon.</p>
     <div class="field">
       <label>Gender</label>
       <select id="fit-gender" aria-label="Gender" onchange="scheduleUpdate()">
