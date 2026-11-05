@@ -151,6 +151,23 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
       <label>Indicator time</label>
       <select id="ind-time" aria-label="Indicator time" onchange="scheduleUpdate()"></select>
     </div>
+    <div class="field">
+      <label>Age group</label>
+      <select id="ind-age" aria-label="Age group" onchange="scheduleUpdate()">
+        <option value="any">Any age</option>
+        <option value="18-24">18–24</option>
+        <option value="25-29">25–29</option>
+        <option value="30-34">30–34</option>
+        <option value="35-39">35–39</option>
+        <option value="40-44">40–44</option>
+        <option value="45-49">45–49</option>
+        <option value="50-54">50–54</option>
+        <option value="55-59">55–59</option>
+        <option value="60-64">60–64</option>
+        <option value="65-69">65–69</option>
+        <option value="70+">70+</option>
+      </select>
+    </div>
     <div class="field" style="flex-basis:100%">
       <div class="year-row">
         <span style="font-size:12px;color:var(--muted)">Years</span>
@@ -176,6 +193,23 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
     <div class="field">
       <label>NYCM target</label>
       <select id="tgt-time" aria-label="NYCM target time" onchange="scheduleUpdate()"></select>
+    </div>
+    <div class="field">
+      <label>Age group</label>
+      <select id="tgt-age" aria-label="Age group" onchange="scheduleUpdate()">
+        <option value="any">Any age</option>
+        <option value="18-24">18–24</option>
+        <option value="25-29">25–29</option>
+        <option value="30-34">30–34</option>
+        <option value="35-39">35–39</option>
+        <option value="40-44">40–44</option>
+        <option value="45-49">45–49</option>
+        <option value="50-54">50–54</option>
+        <option value="55-59">55–59</option>
+        <option value="60-64">60–64</option>
+        <option value="65-69">65–69</option>
+        <option value="70+">70+</option>
+      </select>
     </div>
     <div class="field" style="flex-basis:100%">
       <div class="year-row">
@@ -603,19 +637,21 @@ function _applyYearsParam(qp) {
 function currentPath() {
   const yp = _yearsParam();
   if (mode === "indicator") {
-    const race   = document.getElementById("ind-race").value;
-    const time   = document.getElementById("ind-time").value;
-    const gender = document.getElementById("ind-gender").value;
-    return `/indicator/${RACE_SLUG[race]}/${time}?gender=${gender}${yp}`;
+    const race     = document.getElementById("ind-race").value;
+    const time     = document.getElementById("ind-time").value;
+    const gender   = document.getElementById("ind-gender").value;
+    const ageGroup = document.getElementById("ind-age").value;
+    return `/indicator/${RACE_SLUG[race]}/${time}?gender=${gender}&age=${ageGroup}${yp}`;
   } else if (mode === "fitness") {
     const ag       = document.getElementById("fit-ag").value;
     const gender   = document.getElementById("fit-gender").value;
     const ageGroup = document.getElementById("fit-age").value;
     return `/fitness/${ag}?gender=${gender}&age=${ageGroup}${yp}`;
   } else {
-    const time   = document.getElementById("tgt-time").value;
-    const gender = document.getElementById("tgt-gender").value;
-    return `/target/${time}?gender=${gender}${yp}`;
+    const time     = document.getElementById("tgt-time").value;
+    const gender   = document.getElementById("tgt-gender").value;
+    const ageGroup = document.getElementById("tgt-age").value;
+    return `/target/${time}?gender=${gender}&age=${ageGroup}${yp}`;
   }
 }
 
@@ -639,9 +675,11 @@ function applyPermalink(path, search) {
     if (!race) return false;
     const sec = _parseTimeSec(parts[2]);
     if (!sec) return false;
+    const ageGroup = VALID_AGES.has(qp.get("age")) ? qp.get("age") : "any";
     mode = "indicator";
     document.getElementById("ind-race").value   = race;
     document.getElementById("ind-gender").value = gender;
+    document.getElementById("ind-age").value    = ageGroup;
     populateIndTime(race, findClosest(indCenters(race), sec));
   } else if (parts[0] === "fitness" && parts[1]) {
     const ageGroup = VALID_AGES.has(qp.get("age")) ? qp.get("age") : "any";
@@ -654,8 +692,10 @@ function applyPermalink(path, search) {
     const timeStr = parts[1] === "nycm" ? parts[2] : parts[1];
     const sec = _parseTimeSec(timeStr);
     if (!sec) return false;
+    const ageGroup = VALID_AGES.has(qp.get("age")) ? qp.get("age") : "any";
     mode = "target";
     document.getElementById("tgt-gender").value = gender;
+    document.getElementById("tgt-age").value    = ageGroup;
     populateTgtTime(findClosest(FWD_CENTERS, sec));
   } else {
     return false;
@@ -1019,11 +1059,12 @@ function renderFitness(outEl, data) {
 }
 
 function renderIndicator(outEl, data, splitData) {
-  const race   = document.getElementById("ind-race").value;
-  const time   = document.getElementById("ind-time").value;
-  const gender = document.getElementById("ind-gender").value;
-  const bucket = data[time];
-  const split  = splitData ? {M: splitData.M[time], F: splitData.F[time]} : null;
+  const race     = document.getElementById("ind-race").value;
+  const time     = document.getElementById("ind-time").value;
+  const gender   = document.getElementById("ind-gender").value;
+  const ageGroup = document.getElementById("ind-age").value;
+  const bucket   = data[time];
+  const split    = splitData ? {M: splitData.M[time], F: splitData.F[time]} : null;
 
   if (!bucket) {
     outEl.innerHTML = `<div class="no-data">No data for ${RACE_LABELS[race]} ${time} (${gender}).</div>`;
@@ -1036,9 +1077,11 @@ function renderIndicator(outEl, data, splitData) {
   const medErr     = bucket.riegel_median_error_sec;
 
   const yearSet  = getSelectedYears("ind-years");
-  const fpairs   = filterPairs(bucket.pairs, yearSet);
+  let fpairs = filterPairs(bucket.pairs, yearSet);
+  if (ageGroup !== "any") fpairs = fpairs.filter(p => p[3] === ageGroup);
+  const ageLabel = ageGroup !== "any" ? `, age ${ageGroup}` : "";
   let p25, p50, p75, p25_sec, p50_sec, p75_sec, n_nycm;
-  if (yearSet) {
+  if (yearSet || ageGroup !== "any") {
     const nycmSorted = fpairs.map(p => p[1]).sort((a,b) => a-b);
     p25_sec = nycmSorted.length ? Math.round(percFromSorted(nycmSorted, 0.25)) : null;
     p50_sec = nycmSorted.length ? Math.round(percFromSorted(nycmSorted, 0.50)) : null;
@@ -1062,7 +1105,7 @@ function renderIndicator(outEl, data, splitData) {
       const pLo = d ? fmtPace(toSec(bucket.lo), d) : null;
       const pHi = d ? fmtPace(toSec(bucket.hi), d) : null;
       const paceStr = pLo && pHi ? ` (${pHi}–${pLo})` : "";
-      return `NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""}${paceStr} (${gender})`;
+      return `NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""}${paceStr} (${gender}${ageLabel})`;
     })()}<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners who raced this indicator in the selected window. P75/P50/P25 show times faster than 75%/50%/25% of the group.</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
@@ -1086,8 +1129,8 @@ function renderIndicator(outEl, data, splitData) {
     </div>
     ${riegelPred ? `<div class="riegel-line">Riegel prediction: <span>${riegelPred}</span>${medErr != null ? ` · cohort ran <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median)` : ""}</div>` : ""}
     <div class="meta-line" style="margin-top:8px">${(() => {
-      if (!yearSet) return `N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${n_nycm} (${bucket.pct_nycm ?? "—"}%)`;
-      const nInd = [...yearSet].reduce((s, yr) => s + (bucket.n_indicator_by_year?.[yr] || 0), 0);
+      if (!yearSet && ageGroup === "any") return `N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${n_nycm} (${bucket.pct_nycm ?? "—"}%)`;
+      const nInd = yearSet ? [...yearSet].reduce((s, yr) => s + (bucket.n_indicator_by_year?.[yr] || 0), 0) : (bucket.n_indicator || "—");
       return `N indicator cohort: ${nInd || "—"} · N same-year NYCM: ${n_nycm}`;
     })()}</div>
   </div>`;
@@ -1120,10 +1163,11 @@ function renderIndicator(outEl, data, splitData) {
 }
 
 function renderTarget(outEl, data, splitData) {
-  const time   = document.getElementById("tgt-time").value;
-  const gender = document.getElementById("tgt-gender").value;
-  const bucket = data[time];
-  const split  = splitData ? {M: splitData.M[time], F: splitData.F[time]} : null;
+  const time     = document.getElementById("tgt-time").value;
+  const gender   = document.getElementById("tgt-gender").value;
+  const ageGroup = document.getElementById("tgt-age").value;
+  const bucket   = data[time];
+  const split    = splitData ? {M: splitData.M[time], F: splitData.F[time]} : null;
 
   if (!bucket) {
     outEl.innerHTML = `<div class="no-data">No data for NYCM ${time} (${gender}).</div>`;
@@ -1144,9 +1188,11 @@ function renderTarget(outEl, data, splitData) {
   }
 
   const yearSet  = getSelectedYears("tgt-years");
-  const fpairs   = filterPairs(raceData.pairs, yearSet);
+  let fpairs = filterPairs(raceData.pairs, yearSet);
+  if (ageGroup !== "any") fpairs = fpairs.filter(p => p[3] === ageGroup);
+  const ageLabel = ageGroup !== "any" ? `, age ${ageGroup}` : "";
   let p25, p50, p75, n_matched;
-  if (yearSet) {
+  if (yearSet || ageGroup !== "any") {
     const indSorted = fpairs.map(p => p[0]).sort((a,b) => a-b);
     const p25s = indSorted.length ? Math.round(percFromSorted(indSorted, 0.25)) : null;
     const p50s = indSorted.length ? Math.round(percFromSorted(indSorted, 0.50)) : null;
@@ -1164,7 +1210,7 @@ function renderTarget(outEl, data, splitData) {
   if (smallSample) html += `<div class="small-sample">Small sample (N=${n_matched}).</div>`;
 
   html += `<div class="card">
-    <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min (${gender})<i class="tip-icon">i<span class="tip-bubble">Indicator race times for runners who finished NYCM near your target. The bar shows the middle 50% of this cohort (P75 to P25).</span></i></div>
+    <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min (${gender}${ageLabel})<i class="tip-icon">i<span class="tip-bubble">Indicator race times for runners who finished NYCM near your target. The bar shows the middle 50% of this cohort (P75 to P25).</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
         <div class="pct-label">P75</div>
@@ -1191,8 +1237,8 @@ function renderTarget(outEl, data, splitData) {
     })()}
     ${medErr != null ? `<div class="riegel-line">Riegel median error: <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> (cohort ran ${medErr >= 0 ? "slower" : "faster"} than Riegel)</div>` : ""}
     <div class="meta-line" style="margin-top:8px">${(() => {
-      if (!yearSet) return `N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${n_matched} (${raceData.pct_ran ?? "—"}%)`;
-      const nCohort = [...yearSet].reduce((s, yr) => s + (bucket.n_cohort_by_year?.[yr] || 0), 0);
+      if (!yearSet && ageGroup === "any") return `N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${n_matched} (${raceData.pct_ran ?? "—"}%)`;
+      const nCohort = yearSet ? [...yearSet].reduce((s, yr) => s + (bucket.n_cohort_by_year?.[yr] || 0), 0) : (bucket.n_cohort || "—");
       return `N NYCM cohort: ${nCohort || "—"} · N ran ${raceLabel}: ${n_matched}`;
     })()}</div>
   </div>`;
