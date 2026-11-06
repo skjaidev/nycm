@@ -1405,7 +1405,7 @@ const pacElevPlugin = {
     const { ctx: c, chartArea: { left, right, top, bottom } } = ch;
     const xs = ch.scales.x;
     const maxE = Math.max(...ELEV_PTS.map(p => p[1]));
-    const elevH = (bottom - top) * 0.33;
+    const elevH = (bottom - top) * 0.75;
     c.save();
     c.beginPath(); c.rect(left, top, right - left, bottom - top); c.clip();
     c.beginPath();
@@ -1491,7 +1491,7 @@ const pacCrosshairPlugin = {
 function _pacYRange(segsArr, avgPace) {
   const allPaces = segsArr.flatMap(s => s.flatMap(seg => [seg.p10, seg.p90]));
   const pMin = Math.min(...allPaces, avgPace), pMax = Math.max(...allPaces, avgPace);
-  const pad = (pMax - pMin) * 0.1;
+  const pad = (pMax - pMin) * 0.04;
   return [
     Math.max(0, Math.floor((pMin - pad) / 15) * 15),
     Math.ceil((pMax + pad) / 15) * 15,
@@ -1594,17 +1594,17 @@ function renderPacing(outEl, data) {
   const ctx = document.getElementById("pac-canvas")?.getContext("2d");
   if (!ctx) return;
 
-  const ss = { stepped: "before", tension: 0, pointRadius: 0 };
+  const ss = { stepped: "before", tension: 0, pointRadius: 0, pointHoverRadius: 0 };
   const evenPts = PAC_SEG_X.map(x => ({ x, y: avgPace }));
   const [yMin, yMax] = _pacYRange([segs], avgPace);
 
   const datasets = [
-    { label: "p90", data: segToPts(segs, "p90"), ...ss, fill: "+1", borderColor: "transparent", backgroundColor: "rgba(37,99,235,0.07)" },
-    { label: "p10", data: segToPts(segs, "p10"), ...ss, fill: false, borderColor: "transparent" },
+    { label: "p90", data: segToPts(segs, "p90"), ...ss, fill: "+1", borderColor: "rgba(37,99,235,0.25)", borderWidth: 1, backgroundColor: "rgba(37,99,235,0.05)" },
+    { label: "p10", data: segToPts(segs, "p10"), ...ss, fill: false, borderColor: "rgba(37,99,235,0.25)", borderWidth: 1 },
     { label: "p25", data: segToPts(segs, "p25"), ...ss, fill: 4, borderColor: "rgba(37,99,235,0.45)", borderWidth: 1.5, borderDash: [4, 3], backgroundColor: "rgba(37,99,235,0.14)" },
     { label: "Median", data: segToPts(segs, "p50"), ...ss, fill: false, borderColor: "#2563eb", borderWidth: 2.5 },
     { label: "p75", data: segToPts(segs, "p75"), ...ss, fill: false, borderColor: "rgba(37,99,235,0.45)", borderWidth: 1.5, borderDash: [4, 3] },
-    { label: "Even pace", data: evenPts, fill: false, borderColor: "rgba(5,150,105,0.7)", borderWidth: 1.5, pointRadius: 0 },
+    { label: "Even pace", data: evenPts, fill: false, borderColor: "rgba(5,150,105,0.7)", borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 0 },
   ];
 
   const evenPaceLabelPlugin = {
@@ -1639,12 +1639,18 @@ function renderPacing(outEl, data) {
         legend: { display: false },
         tooltip: {
           position: "pacTop", padding: 6, bodyFont: { size: 11 }, titleFont: { size: 11, weight: "normal" }, backgroundColor: "rgba(55,65,81,0.85)", caretSize: 0,
+          itemSort: (a, b) => {
+            const order = ["p10","p25","Median","p75","p90"];
+            const remap = { p90:"p10", p75:"p25", p25:"p75", p10:"p90" };
+            return order.indexOf(remap[a.dataset.label] ?? a.dataset.label)
+                 - order.indexOf(remap[b.dataset.label] ?? b.dataset.label);
+          },
           callbacks: {
             title: items => _pacSegTitle(items[0].parsed.x),
             label: item => {
               const lbl = item.dataset.label;
-              if (lbl === "p10" || lbl === "p10_f" || lbl === "p90" || lbl === "Even pace") return null;
-              const display = { p90: "p10", p75: "p25", p25: "p75", p10: "p90" }[lbl] ?? lbl;
+              if (lbl === "Even pace") return null;
+              const display = { p90:"p10", p75:"p25", p25:"p75", p10:"p90" }[lbl] ?? lbl;
               return `${display}: ${fmtPaceSec(item.parsed.y)}/mi`;
             }
           }
