@@ -657,11 +657,20 @@ function setMode(m) {
     : mode === "pacing"
     ? document.getElementById("pac-gender").value
     : document.getElementById("tgt-gender").value;
+  const prevTime = mode === "pacing"
+    ? document.getElementById("pac-time").value
+    : mode === "target"
+    ? document.getElementById("tgt-time").value
+    : null;
   mode = m;
   if (m === "indicator") document.getElementById("ind-gender").value = prevGender;
   else if (m === "fitness") document.getElementById("fit-gender").value = prevGender;
   else if (m === "pacing") document.getElementById("pac-gender").value = prevGender;
   else                   document.getElementById("tgt-gender").value = prevGender;
+  if (prevTime) {
+    if (m === "pacing") document.getElementById("pac-time").value = prevTime;
+    else if (m === "target") document.getElementById("tgt-time").value = prevTime;
+  }
   document.getElementById("btn-indicator").classList.toggle("active", m === "indicator");
   document.getElementById("btn-target").classList.toggle("active", m === "target");
   document.getElementById("btn-fitness").classList.toggle("active", m === "fitness");
