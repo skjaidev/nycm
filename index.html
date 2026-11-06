@@ -791,6 +791,7 @@ function applyPermalink(path, search) {
     document.getElementById("pac-gender").value = gender;
     document.getElementById("pac-age").value    = ageGroup;
     populatePacTime(findClosest(FWD_CENTERS, sec));
+    if (qp.get("mode") === "csv") window._pacCsvOnLoad = true;
   } else {
     return false;
   }
@@ -1379,6 +1380,13 @@ function renderTarget(outEl, data, splitData) {
 // ── Pacing chart ──────────────────────────────────────────────────────────
 const PAC_SEG_X = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,26.22];
 const PAC_SEG_DIST = [3.0,1,1,1,1,1,1,1,1,1,1.1,0.9,1,1,1,1,1,1,1,1,1,1,1,1,0.22];
+const PAC_SEG_LABELS = [
+  "0–3","3–4","4–5","5–6","6–7","7–8","8–9","9–10","10–11","11–12",
+  "Half","13.1–14",
+  "14–15","15–16","16–17","17–18","18–19","19–20","20–21","21–22","22–23","23–24","24–25","25–26",
+  "26–Fin"
+];
+let _lastPacSegs = null, _lastPacMeta = null, _lastPacFin = null;
 
 let ELEV_PTS = [], _elevPromise = null;
 function loadElev() {
@@ -1389,6 +1397,41 @@ function loadElev() {
 function fmtPaceSec(sec) {
   const m = Math.floor(sec / 60), s = Math.round(sec % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function _fmtFinishSec(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.round(s%60);
+  return `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+}
+
+function downloadPacingCsv() {
+  if (!_lastPacSegs || !_lastPacMeta) return;
+  const { band, gLabel, ageLabel, nTotal, years } = _lastPacMeta;
+  const permalink = location.origin + `/pacing/${band}?gender=${document.getElementById("pac-gender").value}&age=${document.getElementById("pac-age").value}`;
+  const lines = [
+    `# NYCM Pacing: ${band} ±5 min | ${gLabel} | ${ageLabel} | N=${nTotal}`,
+    `# Years: ${years}`,
+    `# ${permalink}`,
+    `#`,
+    `Segment,Dist (mi),p10 (min/mi),p25 (min/mi),Median (min/mi),p75 (min/mi),p90 (min/mi)`,
+  ];
+  _lastPacSegs.forEach((seg, i) => {
+    const lbl  = PAC_SEG_LABELS[i];
+    const dist = PAC_SEG_DIST[i];
+    const cols = ["p10","p25","p50","p75","p90"].map(k => seg[k] != null ? fmtPaceSec(seg[k]) : "");
+    lines.push([lbl, dist, ...cols].join(","));
+  });
+  if (_lastPacFin) {
+    const f = _lastPacFin;
+    lines.push(`# Actual finish — p75: ${_fmtFinishSec(f.p25)}  Median: ${_fmtFinishSec(f.p50)}  p25: ${_fmtFinishSec(f.p75)}`);
+  }
+  const blob = new Blob([lines.join("\n") + "\n"], { type: "text/csv" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `nycm_pacing_${band.replace(/:/g,"-")}_${document.getElementById("pac-gender").value}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function segToPts(segs, key) {
@@ -1550,6 +1593,8 @@ function renderPacing(outEl, data) {
   }
 
   const gLabel = gender === "any" ? "all" : gender === "M" ? "men" : "women";
+  _lastPacSegs = segs;
+  _lastPacMeta = { band, gLabel, ageLabel, nTotal, years };
   const _legItem = (toggle, swatch, label) =>
     `<span data-pac-toggle="${toggle}" style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none">${swatch}${label}</span>`;
   const legendHtml =
@@ -1568,6 +1613,7 @@ function renderPacing(outEl, data) {
   } else {
     fin = (gender === "M" ? bktM : bktF)?.finish;
   }
+  _lastPacFin = fin || null;
   const finishRow = fin
     ? `p75: <strong>${_fmtFinish(fin.p25)}</strong> · Median: <strong>${_fmtFinish(fin.p50)}</strong> · p25: <strong>${_fmtFinish(fin.p75)}</strong>`
     : null;
@@ -1581,7 +1627,10 @@ function renderPacing(outEl, data) {
   outEl.innerHTML = `
   <div class="card">
     <div class="card-title">Per-mile pace · ${band} ±5 min · ${gLabel}, ${ageLabel}</div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;align-items:center">${legendHtml}</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;align-items:center;justify-content:space-between">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">${legendHtml}</div>
+      <button onclick="downloadPacingCsv()" style="font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--card-bg);color:var(--muted);cursor:pointer;white-space:nowrap">↓ CSV</button>
+    </div>
     <div style="position:relative;height:320px"><canvas id="pac-canvas"></canvas></div>
     <div class="meta-line" style="margin-top:10px">N = ${nTotal} runners · years: ${years}
       <i class="tip-icon">i<span class="tip-bubble">Year filters do not apply to pacing data — percentiles are pooled across all years in the dataset.</span></i>
@@ -1688,6 +1737,11 @@ function renderPacing(outEl, data) {
       pacChart.update();
     });
   });
+
+  if (window._pacCsvOnLoad) {
+    window._pacCsvOnLoad = false;
+    setTimeout(downloadPacingCsv, 100);
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
