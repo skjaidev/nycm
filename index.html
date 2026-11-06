@@ -1589,11 +1589,10 @@ function renderPacing(outEl, data) {
   const ageGroup = document.getElementById("pac-age").value;
   const avgPace  = toSec(band) / 26.22;
   const ageLabel = ageGroup === "any" ? "all ages" : `age ${ageGroup}`;
+  const selYears = getSelectedYears("pac-years");
   const allDataYears = data.years || [];
   const activeYears  = selYears ? allDataYears.filter(y => selYears.has(y)) : allDataYears;
   const years        = activeYears.join(", ") || "—";
-
-  const selYears = getSelectedYears("pac-years");
   const dataM = gender === "any" ? data._M : (gender === "M" ? data : null);
   const dataF = gender === "any" ? data._F : (gender === "F" ? data : null);
 
