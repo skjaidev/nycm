@@ -1210,6 +1210,11 @@ function renderIndicator(outEl, data, splitData) {
     n_nycm = bucket.n_nycm;
   }
   const smallSample = n_nycm < 15;
+  const nIndDisplay = (ageGroup === "any" && !yearSet)
+    ? (bucket.n_indicator || "—")
+    : (ageGroup === "any" && yearSet)
+    ? ([...yearSet].reduce((s, yr) => s + (bucket.n_indicator_by_year?.[yr] || 0), 0) || "—")
+    : "—";
 
   let html = "";
   if (isWeak)      html += `<div class="weak-warn">⚠ Weak indicator — ${TIMING[race]}. Fitness likely changed. Treat as a wide estimate.</div>`;
@@ -1244,11 +1249,7 @@ function renderIndicator(outEl, data, splitData) {
       </div>
     </div>
     ${riegelPred ? `<div class="riegel-line">Riegel prediction: <span>${riegelPred}</span>${medErr != null ? ` · cohort ran <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median)` : ""}</div>` : ""}
-    <div class="meta-line" style="margin-top:8px">${(() => {
-      if (!yearSet && ageGroup === "any") return `N indicator cohort: ${bucket.n_indicator || "—"} · N same-year NYCM: ${n_nycm} (${bucket.pct_nycm ?? "—"}%)`;
-      const nInd = yearSet ? [...yearSet].reduce((s, yr) => s + (bucket.n_indicator_by_year?.[yr] || 0), 0) : (bucket.n_indicator || "—");
-      return `N indicator cohort: ${nInd || "—"} · N same-year NYCM: ${n_nycm}`;
-    })()}</div>
+    <div class="meta-line" style="margin-top:8px">N indicator cohort: ${nIndDisplay} · N same-year NYCM: ${n_nycm}${(!yearSet && ageGroup === "any") ? ` (${bucket.pct_nycm ?? "—"}%)` : ""}</div>
   </div>`;
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">NYCM finishes</div><canvas id="hist-canvas" height="180"></canvas></div>
@@ -1261,8 +1262,8 @@ function renderIndicator(outEl, data, splitData) {
 
   const absErr = medErr != null ? fmt(Math.abs(medErr)) : null;
   html += `<div class="reasoning">
-    <strong>${bucket.n_indicator || "?"}</strong> runners finished ${raceLabel} between <strong>${bucket.lo}</strong> and <strong>${bucket.hi}</strong>.
-    Of those, <strong>${bucket.n_nycm}</strong> (${bucket.pct_nycm ?? "—"}%) also ran NYCM that same year.
+    <strong>${nIndDisplay}</strong> runners finished ${raceLabel} between <strong>${bucket.lo}</strong> and <strong>${bucket.hi}</strong>.
+    Of those, <strong>${n_nycm}</strong>${(!yearSet && ageGroup === "any") ? ` (${bucket.pct_nycm ?? "—"}%)` : ""} also ran NYCM that same year.
     Their median finish was <strong>${p50}</strong> (range: ${p25}–${p75}).
     ${riegelPred && absErr ? `Riegel predicts <strong>${riegelPred}</strong> from ${time}; the cohort ran <strong>${absErr}</strong> ${medErr >= 0 ? "slower" : "faster"} than Riegel (median).` : ""}
     ${isWeak ? `<br><br>⚠ ${TIMING[race]} — treat as a wide-range estimate only.` : ""}
@@ -1323,6 +1324,11 @@ function renderTarget(outEl, data, splitData) {
   }
   const medErr      = raceData.riegel_median_error_sec;
   const smallSample = n_matched < 15;
+  const nCohortDisplay = (ageGroup === "any" && !yearSet)
+    ? (bucket.n_cohort || "—")
+    : (ageGroup === "any" && yearSet)
+    ? ([...yearSet].reduce((s, yr) => s + (bucket.n_cohort_by_year?.[yr] || 0), 0) || "—")
+    : "—";
   if (smallSample) html += `<div class="small-sample">Small sample (N=${n_matched}).</div>`;
 
   html += `<div class="card">
@@ -1352,11 +1358,7 @@ function renderTarget(outEl, data, splitData) {
       return `<div class="meta-line">Marathon target pace: ${fmtPace(lo, MARATHON_DIST)}–${fmtPace(hi, MARATHON_DIST)}</div>`;
     })()}
     ${medErr != null ? `<div class="riegel-line">Riegel median error: <span>${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}</span> (cohort ran ${medErr >= 0 ? "slower" : "faster"} than Riegel)</div>` : ""}
-    <div class="meta-line" style="margin-top:8px">${(() => {
-      if (!yearSet && ageGroup === "any") return `N NYCM cohort: ${bucket.n_cohort} · N ran ${raceLabel}: ${n_matched} (${raceData.pct_ran ?? "—"}%)`;
-      const nCohort = yearSet ? [...yearSet].reduce((s, yr) => s + (bucket.n_cohort_by_year?.[yr] || 0), 0) : (bucket.n_cohort || "—");
-      return `N NYCM cohort: ${nCohort || "—"} · N ran ${raceLabel}: ${n_matched}`;
-    })()}</div>
+    <div class="meta-line" style="margin-top:8px">N NYCM cohort: ${nCohortDisplay} · N ran ${raceLabel}: ${n_matched}${(!yearSet && ageGroup === "any") ? ` (${raceData.pct_ran ?? "—"}%)` : ""}</div>
   </div>`;
   html += `<div class="charts">
     <div class="chart-wrap"><div class="chart-title">${raceLabel} times for NYCM ~${time}</div><canvas id="hist-canvas" height="180"></canvas></div>
@@ -1368,8 +1370,8 @@ function renderTarget(outEl, data, splitData) {
   html += agHtml(bucket, split, tgtCohort);
 
   html += `<div class="reasoning">
-    <strong>${bucket.n_cohort}</strong> runners finished NYCM within 5 minutes of <strong>${time}</strong>.
-    Of those, <strong>${n_matched}</strong>${yearSet ? "" : ` (${raceData.pct_ran ?? "—"}%)`} also ran ${raceLabel} that same year.
+    <strong>${nCohortDisplay}</strong> runners finished NYCM within 5 minutes of <strong>${time}</strong>.
+    Of those, <strong>${n_matched}</strong>${(!yearSet && ageGroup === "any") ? ` (${raceData.pct_ran ?? "—"}%)` : ""} also ran ${raceLabel} that same year.
     Their ${raceLabel} times: P75 <strong>${p25}</strong> · P50 <strong>${p50}</strong> · P25 <strong>${p75}</strong>.
     ${medErr != null ? `Riegel median error: ${medErr >= 0 ? "+" : ""}${fmt(Math.abs(medErr))}.` : ""}
     ${isWeak ? `<br><br>⚠ ${TIMING[tgtRace]} — treat as a wide-range estimate.` : ""}
