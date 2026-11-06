@@ -373,13 +373,15 @@ function mergeIndicatorData(dataM, dataF) {
     const nycmSec  = pairs.map(p => p[1]).sort((a, b) => a - b);
     const nInd     = (bM.n_indicator || 0) + (bF.n_indicator || 0);
     const nNycm    = (bM.n_nycm || 0) + (bF.n_nycm || 0);
-    const nIndByAge = {};
+    const nIndByAge = {}, nIndByYear = {};
     for (const [age, v] of Object.entries(bM.n_indicator_by_age || {})) nIndByAge[age] = (nIndByAge[age] || 0) + v;
     for (const [age, v] of Object.entries(bF.n_indicator_by_age || {})) nIndByAge[age] = (nIndByAge[age] || 0) + v;
+    for (const [yr, v] of Object.entries(bM.n_indicator_by_year || {})) nIndByYear[yr] = (nIndByYear[yr] || 0) + v;
+    for (const [yr, v] of Object.entries(bF.n_indicator_by_year || {})) nIndByYear[yr] = (nIndByYear[yr] || 0) + v;
     const p25s = pct(nycmSec, 0.25), p50s = pct(nycmSec, 0.50), p75s = pct(nycmSec, 0.75);
     merged[key] = {
       ...bM, pairs,
-      n_indicator: nInd, n_indicator_by_age: nIndByAge, n_nycm: nNycm,
+      n_indicator: nInd, n_indicator_by_age: nIndByAge, n_indicator_by_year: nIndByYear, n_nycm: nNycm,
       pct_nycm: nInd ? Math.round(nNycm / nInd * 100) : 0,
       p25_sec: p25s, p50_sec: p50s, p75_sec: p75s,
       p25: fmt(p25s), p50: fmt(p50s), p75: fmt(p75s),
@@ -421,13 +423,16 @@ function mergeTargetData(dataM, dataF) {
         small_sample: nMatched < 15,
       };
     }
-    const nCohortByAge = {};
+    const nCohortByAge = {}, nCohortByYear = {};
     for (const [age, v] of Object.entries(bM.n_cohort_by_age || {})) nCohortByAge[age] = (nCohortByAge[age] || 0) + v;
     for (const [age, v] of Object.entries(bF.n_cohort_by_age || {})) nCohortByAge[age] = (nCohortByAge[age] || 0) + v;
+    for (const [yr, v] of Object.entries(bM.n_cohort_by_year || {})) nCohortByYear[yr] = (nCohortByYear[yr] || 0) + v;
+    for (const [yr, v] of Object.entries(bF.n_cohort_by_year || {})) nCohortByYear[yr] = (nCohortByYear[yr] || 0) + v;
     merged[key] = {
       ...bM, races,
       n_cohort: (bM.n_cohort || 0) + (bF.n_cohort || 0),
       n_cohort_by_age: nCohortByAge,
+      n_cohort_by_year: nCohortByYear,
       vdot_ever_p50: null, vdot_year_p50: null,
       ag_ever_p50:   null, ag_year_p50:   null,
     };
