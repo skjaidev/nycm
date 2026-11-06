@@ -657,16 +657,23 @@ function setMode(m) {
     : mode === "pacing"
     ? document.getElementById("pac-gender").value
     : document.getElementById("tgt-gender").value;
+  const prevAge = mode === "indicator"
+    ? document.getElementById("ind-age").value
+    : mode === "fitness"
+    ? document.getElementById("fit-age").value
+    : mode === "pacing"
+    ? document.getElementById("pac-age").value
+    : document.getElementById("tgt-age").value;
   const prevTime = mode === "pacing"
     ? document.getElementById("pac-time").value
     : mode === "target"
     ? document.getElementById("tgt-time").value
     : null;
   mode = m;
-  if (m === "indicator") document.getElementById("ind-gender").value = prevGender;
-  else if (m === "fitness") document.getElementById("fit-gender").value = prevGender;
-  else if (m === "pacing") document.getElementById("pac-gender").value = prevGender;
-  else                   document.getElementById("tgt-gender").value = prevGender;
+  if (m === "indicator") { document.getElementById("ind-gender").value = prevGender; document.getElementById("ind-age").value = prevAge; }
+  else if (m === "fitness") { document.getElementById("fit-gender").value = prevGender; document.getElementById("fit-age").value = prevAge; }
+  else if (m === "pacing") { document.getElementById("pac-gender").value = prevGender; document.getElementById("pac-age").value = prevAge; }
+  else { document.getElementById("tgt-gender").value = prevGender; document.getElementById("tgt-age").value = prevAge; }
   if (prevTime) {
     if (m === "pacing") document.getElementById("pac-time").value = prevTime;
     else if (m === "target") document.getElementById("tgt-time").value = prevTime;
