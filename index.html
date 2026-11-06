@@ -1214,7 +1214,7 @@ function renderIndicator(outEl, data, splitData) {
     ? (yearSet
         ? ([...yearSet].reduce((s, yr) => s + (bucket.n_indicator_by_year?.[yr] || 0), 0) || "—")
         : (bucket.n_indicator || "—"))
-    : null;
+    : (bucket.n_indicator_by_age?.[ageGroup] ?? "—");
 
   let html = "";
   if (isWeak)      html += `<div class="weak-warn">⚠ Weak indicator — ${TIMING[race]}. Fitness likely changed. Treat as a wide estimate.</div>`;
@@ -1327,7 +1327,7 @@ function renderTarget(outEl, data, splitData) {
     ? (yearSet
         ? ([...yearSet].reduce((s, yr) => s + (bucket.n_cohort_by_year?.[yr] || 0), 0) || "—")
         : (bucket.n_cohort || "—"))
-    : null;
+    : (bucket.n_cohort_by_age?.[ageGroup] ?? "—");
   if (smallSample) html += `<div class="small-sample">Small sample (N=${n_matched}).</div>`;
 
   html += `<div class="card">
