@@ -1531,6 +1531,42 @@ const pacCrosshairPlugin = {
   }
 })();
 
+function _mergePacBkts(bkts) {
+  const valid = bkts.filter(b => b?.segs?.length);
+  if (!valid.length) return null;
+  if (valid.length === 1) return valid[0];
+  const nTot = valid.reduce((s, b) => s + (b.n || 0), 0);
+  if (!nTot) return valid[0];
+  const len = valid[0].segs.length;
+  const segs = Array.from({length: len}, (_, i) => {
+    const out = {};
+    for (const k of ["p10","p25","p50","p75","p90"]) {
+      const vals = valid.filter(b => b.segs[i]?.[k] != null);
+      if (!vals.length) continue;
+      const nV = vals.reduce((s, b) => s + (b.n || 0), 0);
+      out[k] = Math.round(vals.reduce((s, b) => s + b.segs[i][k] * (b.n || 0), 0) / nV);
+    }
+    return out;
+  });
+  const withFin = valid.filter(b => b.finish);
+  let finish = null;
+  if (withFin.length) {
+    const nF = withFin.reduce((s, b) => s + (b.n || 0), 0);
+    finish = {};
+    for (const k of ["p25","p50","p75"])
+      finish[k] = Math.round(withFin.reduce((s, b) => s + b.finish[k] * (b.n || 0), 0) / nF);
+  }
+  return { n: nTot, segs, finish };
+}
+
+function _getPacBkt(data, gKey, band, ageGroup, selYears) {
+  const allYears = data?.years || [];
+  const usePooled = !selYears || allYears.every(y => selYears.has(y));
+  if (usePooled || !data?.by_year) return data?.[gKey]?.[band]?.[ageGroup] ?? null;
+  const bkts = [...selYears].map(y => data.by_year[String(y)]?.[band]?.[ageGroup]);
+  return _mergePacBkts(bkts.filter(Boolean));
+}
+
 function _pacYRange(segsArr, avgPace) {
   const allPaces = segsArr.flatMap(s => s.flatMap(seg => [seg.p10, seg.p90]));
   const pMin = Math.min(...allPaces, avgPace), pMax = Math.max(...allPaces, avgPace);
@@ -1553,13 +1589,16 @@ function renderPacing(outEl, data) {
   const ageGroup = document.getElementById("pac-age").value;
   const avgPace  = toSec(band) / 26.22;
   const ageLabel = ageGroup === "any" ? "all ages" : `age ${ageGroup}`;
-  const years    = data.years?.join(", ") || "—";
+  const allDataYears = data.years || [];
+  const activeYears  = selYears ? allDataYears.filter(y => selYears.has(y)) : allDataYears;
+  const years        = activeYears.join(", ") || "—";
 
+  const selYears = getSelectedYears("pac-years");
   const dataM = gender === "any" ? data._M : (gender === "M" ? data : null);
   const dataF = gender === "any" ? data._F : (gender === "F" ? data : null);
 
-  const bktM = dataM?.[gender === "any" ? "M" : gender]?.[band]?.[ageGroup];
-  const bktF = dataF?.[gender === "any" ? "F" : gender]?.[band]?.[ageGroup];
+  const bktM = _getPacBkt(dataM, gender === "any" ? "M" : gender, band, ageGroup, selYears);
+  const bktF = _getPacBkt(dataF, gender === "any" ? "F" : gender, band, ageGroup, selYears);
 
   // For "any", merge M+F by weighted-averaging percentiles per segment
   let segs, nTotal;
@@ -1632,9 +1671,7 @@ function renderPacing(outEl, data) {
       <button onclick="downloadPacingCsv()" style="font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--card-bg);color:var(--muted);cursor:pointer;white-space:nowrap">↓ CSV</button>
     </div>
     <div style="position:relative;height:320px"><canvas id="pac-canvas"></canvas></div>
-    <div class="meta-line" style="margin-top:10px">N = ${nTotal} runners · years: ${years}
-      <i class="tip-icon">i<span class="tip-bubble">Year filters do not apply to pacing data — percentiles are pooled across all years in the dataset.</span></i>
-    </div>
+    <div class="meta-line" style="margin-top:10px">N = ${nTotal} runners · years: ${years}</div>
     ${finishRow ? `<div class="meta-line" style="margin-top:4px">Actual finish · ${finishRow}</div>` : ""}
     <div class="meta-line" style="margin-top:4px">Implied finish · ${impliedRow}<i class="tip-icon">i<span class="tip-bubble">What your finish would be if you held each percentile pace for every segment — e.g. p75 assumes p75 pace on every mile. Because each mile&#8217;s percentile is independent, this is tighter than actual finish spread.</span></i></div>
   </div>`;
