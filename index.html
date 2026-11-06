@@ -1210,11 +1210,12 @@ function renderIndicator(outEl, data, splitData) {
     n_nycm = bucket.n_nycm;
   }
   const smallSample = n_nycm < 15;
-  const nIndDisplay = (ageGroup === "any" && !yearSet)
-    ? (bucket.n_indicator || "—")
-    : (ageGroup === "any" && yearSet)
-    ? ([...yearSet].reduce((s, yr) => s + (bucket.n_indicator_by_year?.[yr] || 0), 0) || "—")
-    : "—";
+  const nIndDisplay = (() => {
+    if (ageGroup !== "any")
+      return (bucket.pairs || []).filter(p => p[3] === ageGroup).length || "—";
+    if (!yearSet) return bucket.n_indicator || "—";
+    return [...yearSet].reduce((s, yr) => s + (bucket.n_indicator_by_year?.[yr] || 0), 0) || "—";
+  })();
 
   let html = "";
   if (isWeak)      html += `<div class="weak-warn">⚠ Weak indicator — ${TIMING[race]}. Fitness likely changed. Treat as a wide estimate.</div>`;
@@ -1324,11 +1325,12 @@ function renderTarget(outEl, data, splitData) {
   }
   const medErr      = raceData.riegel_median_error_sec;
   const smallSample = n_matched < 15;
-  const nCohortDisplay = (ageGroup === "any" && !yearSet)
-    ? (bucket.n_cohort || "—")
-    : (ageGroup === "any" && yearSet)
-    ? ([...yearSet].reduce((s, yr) => s + (bucket.n_cohort_by_year?.[yr] || 0), 0) || "—")
-    : "—";
+  const nCohortDisplay = (() => {
+    if (ageGroup !== "any")
+      return (raceData.pairs || []).filter(p => p[3] === ageGroup).length || "—";
+    if (!yearSet) return bucket.n_cohort || "—";
+    return [...yearSet].reduce((s, yr) => s + (bucket.n_cohort_by_year?.[yr] || 0), 0) || "—";
+  })();
   if (smallSample) html += `<div class="small-sample">Small sample (N=${n_matched}).</div>`;
 
   html += `<div class="card">
