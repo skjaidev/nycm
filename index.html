@@ -1598,11 +1598,8 @@ function _getPacBkt(data, gKey, band, ageGroup, selYears) {
 function _pacYRange(segsArr, avgPace) {
   const allPaces = segsArr.flatMap(s => s.flatMap(seg => [seg.p10, seg.p90]));
   const pMin = Math.min(...allPaces, avgPace), pMax = Math.max(...allPaces, avgPace);
-  const pad = (pMax - pMin) * 0.04;
-  return [
-    Math.max(0, Math.floor((pMin - pad) / 15) * 15),
-    Math.ceil((pMax + pad) / 15) * 15,
-  ];
+  const pad = Math.max(7, (pMax - pMin) * 0.04);
+  return [Math.max(0, pMin - pad), pMax + pad];
 }
 
 function _pacSegTitle(x) {
@@ -1704,6 +1701,7 @@ function renderPacing(outEl, data) {
   </div>`;
 
   if (pacChart) { pacChart.destroy(); pacChart = null; }
+  document.getElementById('pac-tt')?.remove();
   const ctx = document.getElementById("pac-canvas")?.getContext("2d");
   if (!ctx) return;
 
@@ -1720,6 +1718,9 @@ function renderPacing(outEl, data) {
     { label: "Even pace", data: evenPts, fill: false, borderColor: "rgba(5,150,105,0.7)", borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 0 },
   ];
 
+  const isDark = document.documentElement.dataset.theme === 'dark' ||
+    (!document.documentElement.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
   const evenPaceLabelPlugin = {
     id: "evenPaceLabel",
     afterDraw(chart) {
@@ -1731,8 +1732,8 @@ function renderPacing(outEl, data) {
       c.save();
       c.font = "bold 11px system-ui,sans-serif";
       const tw = c.measureText(label).width;
-      const x = chart.chartArea.left - 4;
-      c.fillStyle = "rgba(255,255,255,0.85)";
+      const x = chart.chartArea.right - 4;
+      c.fillStyle = isDark ? "rgba(31,41,55,0.85)" : "rgba(255,255,255,0.85)";
       c.fillRect(x - tw - 2, yPx - 8, tw + 4, 16);
       c.fillStyle = "rgba(5,150,105,0.9)";
       c.textAlign = "right";
@@ -1740,6 +1741,32 @@ function renderPacing(outEl, data) {
       c.fillText(label, x, yPx);
       c.restore();
     }
+  };
+
+  const externalTooltip = ({ chart, tooltip }) => {
+    let el = document.getElementById('pac-tt');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'pac-tt';
+      el.style.cssText = 'position:absolute;pointer-events:none;background:rgba(55,65,81,0.65);color:#f9fafb;border-radius:6px;padding:5px 8px;font-size:11px;white-space:nowrap;z-index:10';
+      chart.canvas.parentNode.appendChild(el);
+    }
+    if (tooltip.opacity === 0) { el.hidden = true; return; }
+    const items = (tooltip.dataPoints || []).filter(it => it.dataset.label !== 'Even pace');
+    if (!items.length) { el.hidden = true; return; }
+    const remap = { p90:"p10", p75:"p25", p25:"p75", p10:"p90" };
+    const order = ["p10","p25","Median","p75","p90"];
+    items.sort((a, b) => order.indexOf(remap[a.dataset.label] ?? a.dataset.label) - order.indexOf(remap[b.dataset.label] ?? b.dataset.label));
+    const title = _pacSegTitle(items[0].parsed.x);
+    const vals = items.map(it => {
+      const d = remap[it.dataset.label] ?? it.dataset.label;
+      return `<span style="margin-left:10px"><span style="opacity:0.65">${d} </span>${fmtPaceSec(it.parsed.y)}</span>`;
+    }).join('');
+    el.innerHTML = `<span style="opacity:0.75">${title}</span>${vals}`;
+    el.hidden = false;
+    const ca = chart.chartArea;
+    el.style.left = ca.left + 'px';
+    el.style.top = ca.top + 'px';
   };
 
   pacChart = new Chart(ctx, {
@@ -1750,24 +1777,7 @@ function renderPacing(outEl, data) {
       interaction: { mode: "segment", intersect: false },
       plugins: {
         legend: { display: false },
-        tooltip: {
-          position: "pacTop", padding: 6, bodyFont: { size: 11 }, titleFont: { size: 11, weight: "normal" }, backgroundColor: "rgba(55,65,81,0.85)", caretSize: 0,
-          itemSort: (a, b) => {
-            const order = ["p10","p25","Median","p75","p90"];
-            const remap = { p90:"p10", p75:"p25", p25:"p75", p10:"p90" };
-            return order.indexOf(remap[a.dataset.label] ?? a.dataset.label)
-                 - order.indexOf(remap[b.dataset.label] ?? b.dataset.label);
-          },
-          callbacks: {
-            title: items => _pacSegTitle(items[0].parsed.x),
-            label: item => {
-              const lbl = item.dataset.label;
-              if (lbl === "Even pace") return null;
-              const display = { p90:"p10", p75:"p25", p25:"p75", p10:"p90" }[lbl] ?? lbl;
-              return `${display}: ${fmtPaceSec(item.parsed.y)}/mi`;
-            }
-          }
-        }
+        tooltip: { enabled: false, external: externalTooltip }
       },
       scales: {
         x: {
@@ -1778,9 +1788,14 @@ function renderPacing(outEl, data) {
         },
         y: {
           min: yMin, max: yMax,
+          afterFit: s => { s.width = 0; },
           grid: { color: "#f3f4f6" }, border: { display: false },
-          ticks: { font: { size: 11 }, color: "#6b7280", callback: v => fmtPaceSec(v) + "/mi" },
-          title: { display: true, text: "pace (min/mi)", font: { size: 11 }, color: "#9ca3af" }
+          ticks: {
+            mirror: true, z: 1,
+            padding: 4,
+            font: { size: 11 }, color: "#6b7280",
+            callback: v => fmtPaceSec(v)
+          }
         }
       }
     },
