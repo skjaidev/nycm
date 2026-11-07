@@ -1605,6 +1605,7 @@ function _pacYRange(segsArr, avgPace) {
 function _pacSegTitle(x) {
   if (x >= 26) return "Finish";
   if (x === 12) return "Half";
+  if (x <= 2) return "Mile 1-3";
   return `Mile ${x + 1}`;
 }
 
