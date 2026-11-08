@@ -1723,14 +1723,17 @@ function renderSplitCard(outEl, split, band, gLabel, ageLabel) {
       <div style="position:absolute;top:14px;left:${p25p.toFixed(1)}%;font-size:10px;color:var(--muted);transform:translateX(-50%);text-align:center;white-space:nowrap">${fmtDelta(delta.p25)}</div>
       <div style="position:absolute;top:0;left:${p50p.toFixed(1)}%;font-size:10px;color:#2563eb;font-weight:600;transform:translateX(-50%);text-align:center;white-space:nowrap">${fmtDelta(delta.p50)}</div>
       <div style="position:absolute;top:14px;left:${p75p.toFixed(1)}%;font-size:10px;color:var(--muted);transform:translateX(-50%);text-align:center;white-space:nowrap">${fmtDelta(delta.p75)}</div>
-      <div style="position:absolute;top:0;left:100%;font-size:10px;color:#22c55e;font-weight:600;transform:translateX(-50%);text-align:center;white-space:nowrap">${fmtDelta(delta.p90)}</div>
+      <div style="position:absolute;top:0;left:100%;font-size:10px;color:var(--muted);transform:translateX(-50%);text-align:center;white-space:nowrap">${fmtDelta(delta.p90)}</div>
       <div style="position:absolute;top:36px;left:0;right:0;height:2px;background:var(--border)"></div>
       <div style="position:absolute;top:28px;height:18px;left:${p25p.toFixed(1)}%;width:${iqrW.toFixed(1)}%;background:rgba(37,99,235,0.1);border:1.5px solid rgba(37,99,235,0.35);border-radius:3px"></div>
       <div style="position:absolute;top:28px;height:18px;left:${p50p.toFixed(1)}%;width:2px;background:#2563eb;transform:translateX(-50%)"></div>
-      <div style="position:absolute;top:32px;left:0;width:8px;height:8px;border-radius:50%;background:#ef4444;opacity:0.6;transform:translateX(-50%)"></div>
-      <div style="position:absolute;top:32px;left:100%;width:8px;height:8px;border-radius:50%;background:#22c55e;opacity:0.8;transform:translateX(-50%)"></div>
-      <div style="position:absolute;bottom:-20px;left:0;font-size:10px;color:#ef4444;opacity:0.75;transform:translateX(-50%);white-space:nowrap">p10 worst</div>
-      <div style="position:absolute;bottom:-20px;left:100%;font-size:10px;color:#22c55e;opacity:0.9;transform:translateX(-50%);white-space:nowrap">p90 best</div>
+      <div style="position:absolute;top:32px;left:0;width:8px;height:8px;border-radius:50%;background:var(--muted);opacity:0.5;transform:translateX(-50%)"></div>
+      <div style="position:absolute;top:32px;left:100%;width:8px;height:8px;border-radius:50%;background:var(--muted);opacity:0.5;transform:translateX(-50%)"></div>
+      <div style="position:absolute;bottom:-20px;left:0;font-size:10px;color:var(--muted);transform:translateX(-50%);white-space:nowrap">p10</div>
+      <div style="position:absolute;bottom:-20px;left:${p25p.toFixed(1)}%;font-size:10px;color:var(--muted);transform:translateX(-50%);white-space:nowrap">p25</div>
+      <div style="position:absolute;bottom:-20px;left:${p50p.toFixed(1)}%;font-size:10px;color:#2563eb;font-weight:600;transform:translateX(-50%);white-space:nowrap">Median</div>
+      <div style="position:absolute;bottom:-20px;left:${p75p.toFixed(1)}%;font-size:10px;color:var(--muted);transform:translateX(-50%);white-space:nowrap">p75</div>
+      <div style="position:absolute;bottom:-20px;left:100%;font-size:10px;color:var(--muted);transform:translateX(-50%);white-space:nowrap">p90</div>
     </div>
   </div>`);
 }
