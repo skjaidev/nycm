@@ -533,17 +533,6 @@ function setAllYears(active) {
   scheduleUpdate();
 }
 
-function onPac5kYearToggle(btn) {
-  pac5kDiverged = true;
-  btn.classList.toggle("active");
-  const el = document.getElementById("pac5k-years");
-  if (el) {
-    const btns = [...el.querySelectorAll(".year-toggle")];
-    const active = btns.filter(b => b.classList.contains("active")).map(b => +b.dataset.year);
-    pac5kYearsSel = active.length === btns.length ? null : new Set(active);
-  }
-  scheduleUpdate();
-}
 
 function getSelectedYears(id) {
   const el = document.getElementById(id);
@@ -569,7 +558,6 @@ function percFromSorted(arr, q) {
 let mode    = "target";
 let tgtRace = "bronx_10m";
 let histChart = null, scatterChart = null, pacChart = null, pac5kChart = null;
-let pac5kDiverged = false, pac5kYearsSel = null;
 let debounceTimer = null;
 let renderGen = 0;
 const dataCache = {};
@@ -1751,91 +1739,97 @@ function renderPacing(outEl, data) {
   const dataM = gender === "any" ? data._M : (gender === "M" ? data : null);
   const dataF = gender === "any" ? data._F : (gender === "F" ? data : null);
 
-  const bktM = _getPacBkt(dataM, gender === "any" ? "M" : gender, band, ageGroup, selYears);
-  const bktF = _getPacBkt(dataF, gender === "any" ? "F" : gender, band, ageGroup, selYears);
-
-  // For "any", merge M+F by weighted-averaging percentiles per segment
-  let segs, nTotal;
-  if (gender === "any") {
-    const sM = bktM?.segs, sF = bktF?.segs;
-    if (!sM?.length && !sF?.length) {
-      outEl.innerHTML = `<div class="no-data">No pacing data for ${band} (any gender, ${ageLabel}). Try a different goal time or age group.</div>`;
-      return;
-    }
-    const nM = bktM?.n || 0, nF = bktF?.n || 0;
-    nTotal = nM + nF;
-    const len = (sM || sF).length;
-    segs = Array.from({ length: len }, (_, i) => {
-      const keys = ["p10", "p25", "p50", "p75", "p90"];
-      const out = {};
-      for (const k of keys) {
-        const vM = sM?.[i]?.[k], vF = sF?.[i]?.[k];
-        if (vM != null && vF != null) out[k] = Math.round((vM * nM + vF * nF) / nTotal);
-        else out[k] = vM ?? vF;
-      }
-      return out;
-    });
-  } else {
-    const bkt = gender === "M" ? bktM : bktF;
-    if (!bkt?.segs?.length) {
-      outEl.innerHTML = `<div class="no-data">No pacing data for ${band} ${gender === "M" ? "men" : "women"} (${ageLabel}). Try a different goal time or age group.</div>`;
-      return;
-    }
-    segs = bkt.segs;
-    nTotal = bkt.n;
-  }
-
   const gLabel = gender === "any" ? "all" : gender === "M" ? "men" : "women";
-  _lastPacSegs = segs;
-  _lastPacMeta = { band, gLabel, ageLabel, nTotal, years };
-  const _legItem = (toggle, swatch, label) =>
-    `<span data-pac-toggle="${toggle}" style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none">${swatch}${label}</span>`;
-  const legendHtml =
-    _legItem("Median",    `<span style="display:inline-block;width:24px;height:3px;background:#2563eb;border-radius:2px"></span>`, "Median") +
-    _legItem("p75,p25",  `<span style="display:inline-block;width:24px;height:10px;background:rgba(37,99,235,0.14);border:1.5px dashed rgba(37,99,235,0.45);border-radius:2px"></span>`, "p75/p25") +
-    _legItem("Even pace", `<span style="display:inline-block;width:24px;height:3px;background:rgba(5,150,105,0.7);border-radius:2px"></span>`, "Even pace") +
-    `<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span style="display:inline-block;width:24px;height:10px;background:rgba(156,163,175,0.25);border-radius:2px"></span>Elevation</span>`;
 
-  const _fmtFinish = s => { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.round(s%60); return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; };
-  let fin;
-  if (gender === "any") {
-    const fM = bktM?.finish, fF = bktF?.finish, nM = bktM?.n||0, nF = bktF?.n||0, nT = nM + nF;
-    if (fM && fF && nT)
-      fin = { p25: Math.round((fM.p25*nM+fF.p25*nF)/nT), p50: Math.round((fM.p50*nM+fF.p50*nF)/nT), p75: Math.round((fM.p75*nM+fF.p75*nF)/nT) };
-    else fin = fM || fF;
-  } else {
-    fin = (gender === "M" ? bktM : bktF)?.finish;
-  }
-  _lastPacFin = fin || null;
-  const finishRow = fin
-    ? `p75: <strong>${_fmtFinish(fin.p25)}</strong> · Median: <strong>${_fmtFinish(fin.p50)}</strong> · p25: <strong>${_fmtFinish(fin.p75)}</strong>`
-    : null;
-  const impliedFinish = {
-    p25: Math.round(segs.reduce((s, seg, i) => s + seg.p25 * PAC_SEG_DIST[i], 0)),
-    p50: Math.round(segs.reduce((s, seg, i) => s + seg.p50 * PAC_SEG_DIST[i], 0)),
-    p75: Math.round(segs.reduce((s, seg, i) => s + seg.p75 * PAC_SEG_DIST[i], 0)),
-  };
-  const impliedRow = `p75: <strong>${_fmtFinish(impliedFinish.p25)}</strong> · Median: <strong>${_fmtFinish(impliedFinish.p50)}</strong> · p25: <strong>${_fmtFinish(impliedFinish.p75)}</strong>`;
-
-  outEl.innerHTML = `
-  <div class="card">
-    <div class="card-title">Per-mile pace · ${band} ±5 min · ${gLabel}, ${ageLabel}</div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;align-items:center;justify-content:space-between">
-      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">${legendHtml}</div>
-      <button onclick="downloadPacingCsv()" style="font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--card-bg);color:var(--muted);cursor:pointer;white-space:nowrap">↓ CSV</button>
-    </div>
-    <div style="position:relative;height:320px"><canvas id="pac-canvas"></canvas></div>
-    <div class="meta-line" style="margin-top:10px">N = ${nTotal} runners · years: ${years}</div>
-    ${finishRow ? `<div class="meta-line" style="margin-top:4px">Actual finish · ${finishRow}</div>` : ""}
-    <div class="meta-line" style="margin-top:4px">Implied finish · ${impliedRow}<i class="tip-icon">i<span class="tip-bubble">What your finish would be if you held each percentile pace for every segment — e.g. p75 assumes p75 pace on every mile. Because each mile&#8217;s percentile is independent, this is tighter than actual finish spread.</span></i></div>
-  </div>`;
-
+  // Cleanup old charts before writing any new HTML
   if (pacChart) { pacChart.destroy(); pacChart = null; }
   if (pac5kChart) { pac5kChart.destroy(); pac5kChart = null; }
   document.getElementById('pac-tt')?.remove();
   document.getElementById('pac5k-tt')?.remove();
+  outEl.innerHTML = '';
+
+  if (activeYears.length > 0) {
+    const bktM = _getPacBkt(dataM, gender === "any" ? "M" : gender, band, ageGroup, selYears);
+    const bktF = _getPacBkt(dataF, gender === "any" ? "F" : gender, band, ageGroup, selYears);
+
+    let segs, nTotal;
+    let _hasMileData = true;
+    if (gender === "any") {
+      const sM = bktM?.segs, sF = bktF?.segs;
+      if (!sM?.length && !sF?.length) {
+        _hasMileData = false;
+      } else {
+        const nM = bktM?.n || 0, nF = bktF?.n || 0;
+        nTotal = nM + nF;
+        const len = (sM || sF).length;
+        segs = Array.from({ length: len }, (_, i) => {
+          const keys = ["p10", "p25", "p50", "p75", "p90"];
+          const out = {};
+          for (const k of keys) {
+            const vM = sM?.[i]?.[k], vF = sF?.[i]?.[k];
+            if (vM != null && vF != null) out[k] = Math.round((vM * nM + vF * nF) / nTotal);
+            else out[k] = vM ?? vF;
+          }
+          return out;
+        });
+      }
+    } else {
+      const bkt = gender === "M" ? bktM : bktF;
+      if (!bkt?.segs?.length) {
+        _hasMileData = false;
+      } else {
+        segs = bkt.segs;
+        nTotal = bkt.n;
+      }
+    }
+
+    if (_hasMileData) {
+      _lastPacSegs = segs;
+      _lastPacMeta = { band, gLabel, ageLabel, nTotal, years };
+      const _legItem = (toggle, swatch, label) =>
+        `<span data-pac-toggle="${toggle}" style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none">${swatch}${label}</span>`;
+      const legendHtml =
+        _legItem("Median",    `<span style="display:inline-block;width:24px;height:3px;background:#2563eb;border-radius:2px"></span>`, "Median") +
+        _legItem("p75,p25",  `<span style="display:inline-block;width:24px;height:10px;background:rgba(37,99,235,0.14);border:1.5px dashed rgba(37,99,235,0.45);border-radius:2px"></span>`, "p75/p25") +
+        _legItem("Even pace", `<span style="display:inline-block;width:24px;height:3px;background:rgba(5,150,105,0.7);border-radius:2px"></span>`, "Even pace") +
+        `<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)"><span style="display:inline-block;width:24px;height:10px;background:rgba(156,163,175,0.25);border-radius:2px"></span>Elevation</span>`;
+
+      const _fmtFinish = s => { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.round(s%60); return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; };
+      let fin;
+      if (gender === "any") {
+        const fM = bktM?.finish, fF = bktF?.finish, nM = bktM?.n||0, nF = bktF?.n||0, nT = nM + nF;
+        if (fM && fF && nT)
+          fin = { p25: Math.round((fM.p25*nM+fF.p25*nF)/nT), p50: Math.round((fM.p50*nM+fF.p50*nF)/nT), p75: Math.round((fM.p75*nM+fF.p75*nF)/nT) };
+        else fin = fM || fF;
+      } else {
+        fin = (gender === "M" ? bktM : bktF)?.finish;
+      }
+      _lastPacFin = fin || null;
+      const finishRow = fin
+        ? `p75: <strong>${_fmtFinish(fin.p25)}</strong> · Median: <strong>${_fmtFinish(fin.p50)}</strong> · p25: <strong>${_fmtFinish(fin.p75)}</strong>`
+        : null;
+      const impliedFinish = {
+        p25: Math.round(segs.reduce((s, seg, i) => s + seg.p25 * PAC_SEG_DIST[i], 0)),
+        p50: Math.round(segs.reduce((s, seg, i) => s + seg.p50 * PAC_SEG_DIST[i], 0)),
+        p75: Math.round(segs.reduce((s, seg, i) => s + seg.p75 * PAC_SEG_DIST[i], 0)),
+      };
+      const impliedRow = `p75: <strong>${_fmtFinish(impliedFinish.p25)}</strong> · Median: <strong>${_fmtFinish(impliedFinish.p50)}</strong> · p25: <strong>${_fmtFinish(impliedFinish.p75)}</strong>`;
+
+      outEl.insertAdjacentHTML('beforeend', `
+      <div class="card">
+        <div class="card-title">Per-mile pace · ${band} ±5 min · ${gLabel}, ${ageLabel}</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;align-items:center;justify-content:space-between">
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">${legendHtml}</div>
+          <button onclick="downloadPacingCsv()" style="font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--card-bg);color:var(--muted);cursor:pointer;white-space:nowrap">↓ CSV</button>
+        </div>
+        <div style="position:relative;height:320px"><canvas id="pac-canvas"></canvas></div>
+        <div class="meta-line" style="margin-top:10px">N = ${nTotal} runners · years: ${years}</div>
+        ${finishRow ? `<div class="meta-line" style="margin-top:4px">Actual finish · ${finishRow}</div>` : ""}
+        <div class="meta-line" style="margin-top:4px">Implied finish · ${impliedRow}<i class="tip-icon">i<span class="tip-bubble">What your finish would be if you held each percentile pace for every segment — e.g. p75 assumes p75 pace on every mile. Because each mile&#8217;s percentile is independent, this is tighter than actual finish spread.</span></i></div>
+      </div>`);
+
   const ctx = document.getElementById("pac-canvas")?.getContext("2d");
-  if (!ctx) return;
+  if (ctx) {
 
   const ss = { stepped: "before", tension: 0, pointRadius: 0, pointHoverRadius: 0 };
   const evenPts = PAC_SEG_X.map(x => ({ x, y: avgPace }));
@@ -1949,31 +1943,36 @@ function renderPacing(outEl, data) {
     });
   });
 
-  if (window._pacCsvOnLoad) {
-    window._pacCsvOnLoad = false;
-    setTimeout(downloadPacingCsv, 100);
-  }
+      if (window._pacCsvOnLoad) {
+        window._pacCsvOnLoad = false;
+        setTimeout(downloadPacingCsv, 100);
+      }
+    } // end if (ctx)
+    } // end if (_hasMileData) — chart section
 
-  // Merge split data for M+F "any" case then render the card
-  let _split;
-  if (gender === "any") {
-    const spM = bktM?.split, spF = bktF?.split;
-    const nM = bktM?.n||0, nF = bktF?.n||0, nT = nM + nF;
-    if (spM && spF && nT) {
-      const wa = (a, b) => a != null && b != null ? Math.round((a * nM + b * nF) / nT) : (a ?? b);
-      _split = {
-        pct_pos:  wa(spM.pct_pos,  spF.pct_pos),
-        pct_even: wa(spM.pct_even, spF.pct_even),
-        pct_neg:  wa(spM.pct_neg,  spF.pct_neg),
-        delta:       Object.fromEntries(['p10','p25','p50','p75','p90'].map(k => [k, wa(spM.delta[k],       spF.delta[k])])),
-        first_half:  Object.fromEntries(['p25','p50','p75'].map(k           => [k, wa(spM.first_half[k],  spF.first_half[k])])),
-        second_half: Object.fromEntries(['p25','p50','p75'].map(k           => [k, wa(spM.second_half[k], spF.second_half[k])])),
-      };
-    } else _split = spM || spF;
-  } else {
-    _split = (gender === "M" ? bktM : bktF)?.split;
-  }
-  renderSplitCard(outEl, _split, band, gLabel, ageLabel);
+    // Merge split data for M+F "any" case then render the card
+    if (_hasMileData) {
+      let _split;
+      if (gender === "any") {
+        const spM = bktM?.split, spF = bktF?.split;
+        const nM = bktM?.n||0, nF = bktF?.n||0, nT = nM + nF;
+        if (spM && spF && nT) {
+          const wa = (a, b) => a != null && b != null ? Math.round((a * nM + b * nF) / nT) : (a ?? b);
+          _split = {
+            pct_pos:  wa(spM.pct_pos,  spF.pct_pos),
+            pct_even: wa(spM.pct_even, spF.pct_even),
+            pct_neg:  wa(spM.pct_neg,  spF.pct_neg),
+            delta:       Object.fromEntries(['p10','p25','p50','p75','p90'].map(k => [k, wa(spM.delta[k],       spF.delta[k])])),
+            first_half:  Object.fromEntries(['p25','p50','p75'].map(k           => [k, wa(spM.first_half[k],  spF.first_half[k])])),
+            second_half: Object.fromEntries(['p25','p50','p75'].map(k           => [k, wa(spM.second_half[k], spF.second_half[k])])),
+          };
+        } else _split = spM || spF;
+      } else {
+        _split = (gender === "M" ? bktM : bktF)?.split;
+      }
+      renderSplitCard(outEl, _split, band, gLabel, ageLabel);
+    }
+  } // end if (activeYears.length > 0)
 
   renderPacing5k(outEl, data._5k, gender, band, ageGroup);
 }
@@ -1983,12 +1982,12 @@ function renderPacing5k(outEl, data5k, gender, band, ageGroup) {
 
   const avgPace = toSec(band) / 26.22;
   const ageLabel = ageGroup === "any" ? "all ages" : `age ${ageGroup}`;
-  const effectiveYearSel = pac5kDiverged ? pac5kYearsSel : getSelectedYears("pac-years");
+  const selYears5k = getSelectedYears("pac-years");
 
   const dataM = gender === "any" ? data5k._M : (gender === "M" ? data5k : null);
   const dataF = gender === "any" ? data5k._F : (gender === "F" ? data5k : null);
-  const bktM = _getPacBkt(dataM, gender === "any" ? "M" : gender, band, ageGroup, effectiveYearSel);
-  const bktF = _getPacBkt(dataF, gender === "any" ? "F" : gender, band, ageGroup, effectiveYearSel);
+  const bktM = _getPacBkt(dataM, gender === "any" ? "M" : gender, band, ageGroup, selYears5k);
+  const bktF = _getPacBkt(dataF, gender === "any" ? "F" : gender, band, ageGroup, selYears5k);
 
   let segs, nTotal;
   if (gender === "any") {
@@ -2013,13 +2012,8 @@ function renderPacing5k(outEl, data5k, gender, band, ageGroup) {
 
   const gLabel = gender === "any" ? "all" : gender === "M" ? "men" : "women";
   const all5kYears = data5k.years || [];
-  const active5kYears = effectiveYearSel ? all5kYears.filter(y => effectiveYearSel.has(y)) : all5kYears;
+  const active5kYears = selYears5k ? all5kYears.filter(y => selYears5k.has(y)) : all5kYears;
   const years5k = active5kYears.join(", ") || "—";
-
-  const yearBtns5k = all5kYears.map(y => {
-    const active = !effectiveYearSel || effectiveYearSel.has(y);
-    return `<button class="year-toggle${active ? ' active' : ''}" data-year="${y}" onclick="onPac5kYearToggle(this)">${y}</button>`;
-  }).join('');
 
   const _leg5k = (toggle, swatch, label) =>
     `<span data-pac5k-toggle="${toggle}" style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none">${swatch}${label}</span>`;
@@ -2034,7 +2028,6 @@ function renderPacing5k(outEl, data5k, gender, band, ageGroup) {
     <div class="card-title">5K-split pace · ${band} ±5 min · ${gLabel}, ${ageLabel}</div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;align-items:center;justify-content:space-between">
       <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">${legendHtml5k}</div>
-      <div class="year-checks" id="pac5k-years">${yearBtns5k}</div>
     </div>
     <div style="position:relative;height:320px"><canvas id="pac5k-canvas"></canvas></div>
     <div class="meta-line" style="margin-top:10px">N = ${nTotal} runners · years: ${years5k}</div>
@@ -2198,10 +2191,10 @@ function renderPacing5k(outEl, data5k, gender, band, ageGroup) {
   populateYearChecks("pac-years");
   applyPacYearAvailability();
   fetchData("pacing_M").then(d => {
-    if (d?.years?.length) {
-      d.years.forEach(y => PAC_YEARS.add(y));
-      applyPacYearAvailability();
-    }
+    if (d?.years?.length) { d.years.forEach(y => PAC_YEARS.add(y)); applyPacYearAvailability(); }
+  });
+  fetchData("pacing_5k_M").then(d => {
+    if (d?.years?.length) { d.years.forEach(y => PAC_YEARS.add(y)); applyPacYearAvailability(); }
   });
   populateIndTime("bronx_10m");
   populateTgtTime();
