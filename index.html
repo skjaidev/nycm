@@ -1260,8 +1260,8 @@ function renderIndicator(outEl, data, splitData) {
       const pLo = d ? fmtPace(toSec(bucket.lo), d) : null;
       const pHi = d ? fmtPace(toSec(bucket.hi), d) : null;
       const paceStr = pLo && pHi ? ` (${pHi}–${pLo})` : "";
-      return `NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""}${paceStr} (${gender}${ageLabel})`;
-    })()}<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for runners who raced this indicator in the selected window. P75/P50/P25 show times faster than 75%/50%/25% of the group.</span></i></div>
+      return `NYCM finish distribution · runners who ran ${raceLabel} ${bucket.lo || ""}–${bucket.hi || ""}${paceStr}`;
+    })()}<i class="tip-icon">i<span class="tip-bubble">NYCM finish times for ${gender === "any" ? "runners" : gender === "M" ? "male runners" : "female runners"}${ageGroup !== "any" ? ` age ${ageGroup}` : ""} who raced ${raceLabel} in the ${bucket.lo}–${bucket.hi} window.</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
         <div class="pct-label">P75</div>
@@ -1290,7 +1290,8 @@ function renderIndicator(outEl, data, splitData) {
     <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="240"></canvas></div>
   </div>`;
 
-  const indCohort = `runners who raced ${raceLabel} in the selected window`;
+  const gDesc = gender === "M" ? " (men)" : gender === "F" ? " (women)" : "";
+  const indCohort = `runners who raced ${raceLabel} in the selected window${gDesc}${ageLabel}`;
   html += vdotHtml(bucket, split, indCohort);
   html += agHtml(bucket, split, indCohort);
 
@@ -1367,7 +1368,7 @@ function renderTarget(outEl, data, splitData) {
   if (smallSample) html += `<div class="small-sample">Small sample (N=${n_matched}).</div>`;
 
   html += `<div class="card">
-    <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min (${gender}${ageLabel})<i class="tip-icon">i<span class="tip-bubble">Indicator race times for runners who finished NYCM near your target. The bar shows the middle 50% of this cohort (P75 to P25).</span></i></div>
+    <div class="card-title">${raceLabel} times · runners who finished NYCM ~${time} ±5 min<i class="tip-icon">i<span class="tip-bubble">${raceLabel} times for ${gender === "any" ? "runners" : gender === "M" ? "male runners" : "female runners"}${ageGroup !== "any" ? ` age ${ageGroup}` : ""} who finished NYCM within 5 min of ${time}.</span></i></div>
     <div class="pct-row">
       <div class="pct-item">
         <div class="pct-label">P75</div>
@@ -1400,7 +1401,8 @@ function renderTarget(outEl, data, splitData) {
     <div class="chart-wrap"><div class="chart-title">${raceLabel} vs NYCM</div><canvas id="scatter-canvas" height="240"></canvas></div>
   </div>`;
 
-  const tgtCohort = `runners who finished NYCM near ${time}`;
+  const gDesc = gender === "M" ? " (men)" : gender === "F" ? " (women)" : "";
+  const tgtCohort = `runners who finished NYCM near ${time}${gDesc}${ageLabel}`;
   html += vdotHtml(bucket, split, tgtCohort);
   html += agHtml(bucket, split, tgtCohort);
 
