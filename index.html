@@ -557,7 +557,7 @@ function percFromSorted(arr, q) {
 // ── State ─────────────────────────────────────────────────────────────────
 let mode    = "target";
 let tgtRace = "bronx_10m";
-let histChart = null, scatterChart = null, pacChart = null, pac5kChart = null;
+let histChart = null, scatterChart = null, pacChart = null, pac5kChart = null, splitLinesChart = null;
 let debounceTimer = null;
 let renderGen = 0;
 const dataCache = {};
@@ -1639,7 +1639,25 @@ function _mergePacBkts(bkts) {
       second_half: Object.fromEntries(['p25','p50','p75'].map(k => [k, wa('second_half', k)])),
     };
   }
-  return { n: nTot, segs, finish, split };
+  const withSL = valid.filter(b => b.split_lines);
+  let split_lines = null;
+  if (withSL.length === 1) {
+    split_lines = withSL[0].split_lines;
+  } else if (withSL.length > 1) {
+    split_lines = {};
+    for (const grp of ['pos', 'even', 'neg']) {
+      const nk = `n_${grp}`;
+      split_lines[nk] = withSL.reduce((s, b) => s + (b.split_lines[nk] || 0), 0);
+      const hasData = withSL.filter(b => b.split_lines[grp]);
+      if (!hasData.length) { split_lines[grp] = null; continue; }
+      const nG = hasData.reduce((s, b) => s + (b.split_lines[nk] || 0), 0) || 1;
+      const nseg = hasData[0].split_lines[grp].length;
+      split_lines[grp] = Array.from({length: nseg}, (_, i) =>
+        Math.round(hasData.reduce((s, b) => s + b.split_lines[grp][i] * (b.split_lines[nk] || 0), 0) / nG)
+      );
+    }
+  }
+  return { n: nTot, segs, finish, split, split_lines };
 }
 
 function _getPacBkt(data, gKey, band, ageGroup, selYears) {
@@ -1747,8 +1765,10 @@ function renderPacing(outEl, data) {
   // Cleanup old charts before writing any new HTML
   if (pacChart) { pacChart.destroy(); pacChart = null; }
   if (pac5kChart) { pac5kChart.destroy(); pac5kChart = null; }
+  if (splitLinesChart) { splitLinesChart.destroy(); splitLinesChart = null; }
   document.getElementById('pac-tt')?.remove();
   document.getElementById('pac5k-tt')?.remove();
+  document.getElementById('sl-tt')?.remove();
   outEl.innerHTML = '';
 
   if (activeYears.length > 0) {
@@ -2008,7 +2028,204 @@ function renderPacing(outEl, data) {
   }
 
   renderSplitCard(outEl, _splitForCard, band, gLabel, ageLabel, _splitForCardN);
+  renderSplitLines(outEl, data._5k, gender, band, ageGroup);
   renderPacing5k(outEl, data._5k, gender, band, ageGroup);
+}
+
+function renderSplitLines(outEl, data5k, gender, band, ageGroup) {
+  if (splitLinesChart) { splitLinesChart.destroy(); splitLinesChart = null; }
+  document.getElementById('sl-tt')?.remove();
+  if (!data5k?.years?.length) return;
+
+  const selYears = getSelectedYears("pac-years");
+  const dataM = gender === "any" ? data5k._M : (gender === "M" ? data5k : null);
+  const dataF = gender === "any" ? data5k._F : (gender === "F" ? data5k : null);
+  const bktM = _getPacBkt(dataM, gender === "any" ? "M" : gender, band, ageGroup, selYears);
+  const bktF = _getPacBkt(dataF, gender === "any" ? "F" : gender, band, ageGroup, selYears);
+
+  let sl;
+  if (gender === "any") {
+    const slM = bktM?.split_lines, slF = bktF?.split_lines;
+    if (!slM && !slF) return;
+    if (!slM || !slF) { sl = slM ?? slF; }
+    else {
+      sl = {};
+      for (const grp of ['pos', 'even', 'neg']) {
+        const nk = `n_${grp}`;
+        const nM = slM[nk] || 0, nF = slF[nk] || 0;
+        sl[nk] = nM + nF;
+        if (!slM[grp] && !slF[grp]) { sl[grp] = null; continue; }
+        if (!slM[grp]) { sl[grp] = slF[grp]; continue; }
+        if (!slF[grp]) { sl[grp] = slM[grp]; continue; }
+        const nT = nM + nF || 1;
+        sl[grp] = slM[grp].map((v, i) => Math.round((v * nM + slF[grp][i] * nF) / nT));
+      }
+    }
+  } else {
+    sl = (gender === "M" ? bktM : bktF)?.split_lines;
+  }
+
+  if (!sl || (!sl.pos && !sl.even && !sl.neg)) return;
+
+  const toLine = arr => arr ? PAC_SEG_X_5K.map((x, i) => ({ x, y: arr[Math.min(i, arr.length - 1)] })) : null;
+  const posLine = toLine(sl.pos), evenLine = toLine(sl.even), negLine = toLine(sl.neg);
+  const allVals = [posLine, evenLine, negLine].filter(Boolean).flatMap(pts => pts.map(p => p.y));
+  if (!allVals.length) return;
+
+  const pad = 10;
+  const yMin = Math.floor((Math.min(...allVals) - pad) / 5) * 5;
+  const yMax = Math.ceil((Math.max(...allVals) + pad) / 5) * 5;
+
+  const ageLabel = ageGroup === "any" ? "all ages" : `age ${ageGroup}`;
+  const gLabel = gender === "any" ? "all" : gender === "M" ? "men" : "women";
+
+  const SEG_DISTS_5K = PAC_SEG_X_5K.slice(1).map((x, i) => x - PAC_SEG_X_5K[i]);
+  const impliedFinish = arr => arr
+    ? Math.round(SEG_DISTS_5K.reduce((s, d, i) => s + arr[i] * d, 0))
+    : null;
+  const fmtFinish = s => {
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.round(s%60);
+    return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  };
+  const posFinish = impliedFinish(sl.pos), evenFinish = impliedFinish(sl.even), negFinish = impliedFinish(sl.neg);
+
+  const ss = { stepped: "before", tension: 0, pointRadius: 0, pointHoverRadius: 0, fill: false };
+  const datasets = [];
+  if (posLine)  datasets.push({ label: "Positive", data: posLine,  ...ss, borderColor: "#ef4444", borderWidth: 2, borderDash: [5,3], _finish: posFinish  ? fmtFinish(posFinish)  : null });
+  if (evenLine) datasets.push({ label: "Even",     data: evenLine, ...ss, borderColor: "#9ca3af", borderWidth: 2,                    _finish: evenFinish ? fmtFinish(evenFinish) : null });
+  if (negLine)  datasets.push({ label: "Negative", data: negLine,  ...ss, borderColor: "#22c55e", borderWidth: 2,                    _finish: negFinish  ? fmtFinish(negFinish)  : null });
+  if (!datasets.length) return;
+
+  const nMeta = ['pos','even','neg']
+    .map(g => ({ g, n: sl[`n_${g}`] ?? 0, hasLine: !!sl[g] }))
+    .filter(x => x.n > 0)
+    .map(x => `${x.g === 'pos' ? 'Positive' : x.g === 'even' ? 'Even' : 'Negative'} N=${x.n}${x.hasLine ? '' : ' (too few)'}`)
+    .join(' · ');
+
+  const legItem = (color, dash, label) =>
+    `<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)">` +
+    `<span style="display:inline-block;width:24px;height:0;border-top:3px ${dash ? 'dashed' : 'solid'} ${color}"></span>${label}</span>`;
+  const legendHtml =
+    (posLine  ? legItem('#ef4444', true,  'Positive split') : '') +
+    (evenLine ? legItem('#9ca3af', false, 'Even split') : '') +
+    (negLine  ? legItem('#22c55e', false, 'Negative split') : '');
+
+  outEl.insertAdjacentHTML('beforeend', `
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">Pacing by split type · ${band} ±5 min · ${gLabel}, ${ageLabel}</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;align-items:center">${legendHtml}</div>
+    <div style="position:relative;height:220px"><canvas id="sl-canvas"></canvas></div>
+    <div class="meta-line" style="margin-top:8px">${nMeta}</div>
+  </div>`);
+
+  const ctx = document.getElementById("sl-canvas")?.getContext("2d");
+  if (!ctx) return;
+
+  const slCrosshairPlugin = {
+    id: "slCrosshair",
+    afterDraw(chart) {
+      const tt = chart.tooltip;
+      if (!tt._active?.length) return;
+      const xs = chart.scales.x, ca = chart.chartArea;
+      const elPx = tt._active[0].element?.x;
+      if (elPx == null) return;
+      const dataX = xs.getValueForPixel(elPx);
+      const si = PAC_SEG_X_5K.reduce((best, v, i) => v <= dataX + 1e-6 ? i : best, 0);
+      const midX = si < PAC_SEG_X_5K.length - 1 ? (PAC_SEG_X_5K[si] + PAC_SEG_X_5K[si + 1]) / 2 : dataX;
+      const midPx = xs.getPixelForValue(midX);
+      const c = chart.ctx;
+      c.save();
+      c.setLineDash([4,4]); c.strokeStyle = "rgba(107,114,128,0.4)"; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(midPx, ca.top); c.lineTo(midPx, ca.bottom); c.stroke();
+      c.setLineDash([]);
+      tt._active.forEach(el => {
+        const color = el.element?.options?.borderColor;
+        if (!color || color === "transparent") return;
+        const ely = el.element?.y;
+        if (ely == null) return;
+        c.beginPath(); c.arc(midPx, ely, 4, 0, Math.PI * 2);
+        c.fillStyle = color; c.strokeStyle = "#fff"; c.lineWidth = 2;
+        c.fill(); c.stroke();
+      });
+      c.restore();
+    }
+  };
+
+  const externalTooltipSL = ({ chart, tooltip }) => {
+    let el = document.getElementById('sl-tt');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'sl-tt';
+      el.style.cssText = 'position:absolute;pointer-events:none;background:rgba(55,65,81,0.65);color:#f9fafb;border-radius:6px;padding:5px 8px;font-size:11px;white-space:nowrap;z-index:10';
+      chart.canvas.parentNode.appendChild(el);
+    }
+    if (tooltip.opacity === 0) { el.hidden = true; return; }
+    const items = tooltip.dataPoints || [];
+    if (!items.length) { el.hidden = true; return; }
+    const xVal = items[0].parsed.x;
+    const segIdx = PAC_SEG_X_5K.findIndex(x => Math.abs(x - xVal) < 0.01);
+    const title = PAC_5K_LABELS[Math.min(Math.max(segIdx, 0), PAC_5K_LABELS.length - 1)];
+    const vals = items.map(it =>
+      `<span style="margin-left:10px"><span style="opacity:0.65">${it.dataset.label} </span>${fmtPaceSec(it.parsed.y)}</span>`
+    ).join('');
+    el.innerHTML = `<span style="opacity:0.75">${title}</span>${vals}`;
+    el.hidden = false;
+    const ca = chart.chartArea;
+    el.style.left = ca.left + 'px';
+    el.style.top = ca.top + 'px';
+  };
+
+  const slFinishLabelPlugin = {
+    id: "slFinishLabel",
+    afterDraw(chart) {
+      const { ctx, chartArea, scales: { y: ys } } = chart;
+      chart.data.datasets.forEach((ds, di) => {
+        if (!chart.isDatasetVisible(di) || !ds._finish) return;
+        const lastPt = ds.data[ds.data.length - 1];
+        if (!lastPt) return;
+        const yPx = ys.getPixelForValue(lastPt.y);
+        ctx.save();
+        ctx.font = "bold 10px system-ui,sans-serif";
+        ctx.fillStyle = ds.borderColor;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(ds._finish, chartArea.right + 4, yPx);
+        ctx.restore();
+      });
+    }
+  };
+
+  splitLinesChart = new Chart(ctx, {
+    type: "line",
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { right: 56 } },
+      interaction: { mode: "segment5k", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false, external: externalTooltipSL }
+      },
+      scales: {
+        x: {
+          type: "linear", min: 0, max: 26.5,
+          grid: { color: "#f3f4f6" }, border: { display: false },
+          afterBuildTicks(axis) { axis.ticks = PAC_SEG_X_5K.slice(1).map(v => ({ value: v })); },
+          ticks: {
+            font: { size: 11 }, color: "#6b7280",
+            callback: v => { const i = PAC_SEG_X_5K.findIndex(x => Math.abs(x - v) < 0.01); return i > 0 ? PAC_5K_LABELS[i - 1] : null; }
+          }
+        },
+        y: {
+          min: yMin, max: yMax,
+          afterFit: s => { s.width = 0; },
+          grid: { color: "#f3f4f6" }, border: { display: false },
+          ticks: { mirror: true, z: 1, padding: 4, font: { size: 11 }, color: "#6b7280", callback: v => fmtPaceSec(v) }
+        }
+      }
+    },
+    plugins: [slCrosshairPlugin, slFinishLabelPlugin],
+  });
 }
 
 function renderPacing5k(outEl, data5k, gender, band, ageGroup) {
