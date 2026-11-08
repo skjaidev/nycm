@@ -1664,7 +1664,7 @@ function _pacSegTitle(x) {
   return `Mile ${x + 1}`;
 }
 
-function renderSplitCard(outEl, split, band, gLabel, ageLabel) {
+function renderSplitCard(outEl, split, band, gLabel, ageLabel, n) {
   if (!split) return;
   const { pct_pos, pct_even, pct_neg, delta, first_half, second_half } = split;
   const fmtHalf = s => {
@@ -1690,6 +1690,7 @@ function renderSplitCard(outEl, split, band, gLabel, ageLabel) {
   outEl.insertAdjacentHTML('beforeend', `
   <div class="card" style="margin-top:16px">
     <div class="card-title">Split analysis · ${band} ±5 min · ${gLabel}, ${ageLabel}</div>
+    ${n ? `<div class="meta-line" style="margin-top:4px;margin-bottom:4px">N = ${n} runners</div>` : ''}
     <div style="display:flex;gap:24px;margin:12px 0;flex-wrap:wrap">
       <div style="text-align:center;min-width:60px">
         <div style="font-size:22px;font-weight:700;color:#ef4444">${pct_pos}%</div>
@@ -1740,6 +1741,8 @@ function renderPacing(outEl, data) {
   const dataF = gender === "any" ? data._F : (gender === "F" ? data : null);
 
   const gLabel = gender === "any" ? "all" : gender === "M" ? "men" : "women";
+
+  let _splitForCard = null, _splitForCardN = 0;
 
   // Cleanup old charts before writing any new HTML
   if (pacChart) { pacChart.destroy(); pacChart = null; }
@@ -1950,15 +1953,15 @@ function renderPacing(outEl, data) {
     } // end if (ctx)
     } // end if (_hasMileData) — chart section
 
-    // Merge split data for M+F "any" case then render the card
+    // Merge split data for M+F "any" case and store for card below
     if (_hasMileData) {
-      let _split;
+      let _sp;
       if (gender === "any") {
         const spM = bktM?.split, spF = bktF?.split;
         const nM = bktM?.n||0, nF = bktF?.n||0, nT = nM + nF;
         if (spM && spF && nT) {
           const wa = (a, b) => a != null && b != null ? Math.round((a * nM + b * nF) / nT) : (a ?? b);
-          _split = {
+          _sp = {
             pct_pos:  wa(spM.pct_pos,  spF.pct_pos),
             pct_even: wa(spM.pct_even, spF.pct_even),
             pct_neg:  wa(spM.pct_neg,  spF.pct_neg),
@@ -1966,14 +1969,45 @@ function renderPacing(outEl, data) {
             first_half:  Object.fromEntries(['p25','p50','p75'].map(k           => [k, wa(spM.first_half[k],  spF.first_half[k])])),
             second_half: Object.fromEntries(['p25','p50','p75'].map(k           => [k, wa(spM.second_half[k], spF.second_half[k])])),
           };
-        } else _split = spM || spF;
+        } else _sp = spM || spF;
       } else {
-        _split = (gender === "M" ? bktM : bktF)?.split;
+        _sp = (gender === "M" ? bktM : bktF)?.split;
       }
-      renderSplitCard(outEl, _split, band, gLabel, ageLabel);
+      _splitForCard = _sp;
+      _splitForCardN = nTotal;
     }
   } // end if (activeYears.length > 0)
 
+  // Fall back to 5K split data when no per-mile years selected
+  if (!_splitForCard && data._5k) {
+    const selY = getSelectedYears("pac-years");
+    const d5kM = gender === "any" ? data._5k._M : (gender === "M" ? data._5k : null);
+    const d5kF = gender === "any" ? data._5k._F : (gender === "F" ? data._5k : null);
+    const b5kM = _getPacBkt(d5kM, gender === "any" ? "M" : gender, band, ageGroup, selY);
+    const b5kF = _getPacBkt(d5kF, gender === "any" ? "F" : gender, band, ageGroup, selY);
+    if (gender === "any") {
+      const spM = b5kM?.split, spF = b5kF?.split;
+      const nM = b5kM?.n||0, nF = b5kF?.n||0, nT = nM + nF;
+      if (spM && spF && nT) {
+        const wa = (a, b) => a != null && b != null ? Math.round((a * nM + b * nF) / nT) : (a ?? b);
+        _splitForCard = {
+          pct_pos:  wa(spM.pct_pos,  spF.pct_pos),
+          pct_even: wa(spM.pct_even, spF.pct_even),
+          pct_neg:  wa(spM.pct_neg,  spF.pct_neg),
+          delta:       Object.fromEntries(['p10','p25','p50','p75','p90'].map(k => [k, wa(spM.delta[k],       spF.delta[k])])),
+          first_half:  Object.fromEntries(['p25','p50','p75'].map(k           => [k, wa(spM.first_half[k],  spF.first_half[k])])),
+          second_half: Object.fromEntries(['p25','p50','p75'].map(k           => [k, wa(spM.second_half[k], spF.second_half[k])])),
+        };
+        _splitForCardN = nT;
+      } else { _splitForCard = spM || spF; _splitForCardN = (b5kM||b5kF)?.n || 0; }
+    } else {
+      const bk = gender === "M" ? b5kM : b5kF;
+      _splitForCard = bk?.split;
+      _splitForCardN = bk?.n || 0;
+    }
+  }
+
+  renderSplitCard(outEl, _splitForCard, band, gLabel, ageLabel, _splitForCardN);
   renderPacing5k(outEl, data._5k, gender, band, ageGroup);
 }
 
